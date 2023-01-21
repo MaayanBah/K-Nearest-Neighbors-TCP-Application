@@ -12,7 +12,7 @@ void AlgorithmSettingsCommand::execute() {
     io.write(string("The current KNN parameters are: K = ") + 
              to_string(k) + 
              ", distance metric = " +
-             DistanceFactory::distanceName(distanceMethod) + "\n");
+             DistanceFactory::distanceName(appData.distanceMethod) + "\n");
     
     std::string response = io.read();
     if (response == "\n") {
@@ -33,7 +33,7 @@ void AlgorithmSettingsCommand::execute() {
     }
 
     int newK;
-    bool wasKParsed = parse(kString, newK) && newK >= 1 && newK <= dataSet.size();
+    bool wasKParsed = parse(kString, newK) && newK >= 1 && newK <= appData.dataset.size();
     if (!wasKParsed) {
         io.write(badIntegerMessage);
     }
@@ -60,7 +60,7 @@ void AlgorithmSettingsCommand::execute() {
     }
 
     if (wasKParsed) {
-        k = newK;
-        distanceMethod = conversionMap.at(distanceString);
+        appData.k = newK;
+        appData.distanceMethod = conversionMap.at(distanceString);
     }
 }

@@ -2,6 +2,7 @@
 #define __ALGORITHM_SETTINGS_COMMAND_H
 
 #include "ClientApp/Command.h"
+#include "ClientApp/AppData.h"
 #include "Dataset/Distances.h"
 
 namespace app {
@@ -9,21 +10,15 @@ namespace app {
     private:
         // Members
         DefaultIO& io;
-        data::LabeledDataSet& dataSet;
-        int& k;
-        math::DistanceFactory::DistanceType& distanceMethod;
+        AppData& appData;
 
     public:
         // C'tor
         AlgorithmSettingsCommand(DefaultIO& io, 
-                                 data::LabeledDataSet& dataSet,
-                                 int& k,
-                                 math::DistanceFactory::DistanceType& distanceMethod) :
+                                 AppData& appData) :
             Command("algorithm settings"),
             io(io),
-            dataSet(dataSet),
-            k(k),
-            distanceMethod(distanceMethod) {
+            appData(appData) {
         }
 
         // Implemented Abstract Methods

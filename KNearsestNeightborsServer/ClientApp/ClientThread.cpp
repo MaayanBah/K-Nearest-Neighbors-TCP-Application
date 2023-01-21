@@ -7,6 +7,7 @@
 #include "ClientApp/UploadCommand.h"
 #include "ClientApp/AlgorithmSettingsCommand.h"
 #include "ClientApp/ClientThread.h"
+#include "ClientApp/AppData.h"
 #include "Utils/ParseMethods.h"
 #include "Dataset/LabeledDataSet.h"
 #include "Dataset/Distances.h"
@@ -28,14 +29,11 @@ void ClientThread::sendMenu(const network::ClientSocket& client,
 }
 
 void ClientThread::operator()(network::ClientSocket client) {
-    data::LabeledDataSet dataSet;
-    int k = 5;
-    math::DistanceFactory::DistanceType distanceMethod = math::DistanceFactory::DistanceType::Euclidean;
-
+    AppData appData;
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands = {
-        make_unique<AlgorithmSettingsCommand>(socketIO, dataSet, k, distanceMethod)
+        make_unique<AlgorithmSettingsCommand>(socketIO, appData)
     };
 
     string response;
