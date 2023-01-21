@@ -8,6 +8,16 @@
 namespace data {
 	class LabeledDataSet {
 	public:
+		/*
+		* This class represents a single row in the classified data set. 
+		* It consists of features and a label.
+		*/
+		struct LabeledData {
+			// Data Members
+			std::vector<double> features;
+			std::string label;
+		};
+
 		// Special Constructors
 		LabeledDataSet() = default;
 		LabeledDataSet(const LabeledDataSet&) = default;
@@ -21,7 +31,7 @@ namespace data {
 		~LabeledDataSet() = default;
 
 		// Constructor that parses the file
-		LabeledDataSet(const std::string& classifiedFilePath);
+		LabeledDataSet(std::vector<LabeledData> dataSet);
 
 		// Methods
 		inline unsigned int size() const { return dataSet.size(); }
@@ -31,19 +41,6 @@ namespace data {
 								 int k) const;
 
 	private:
-		/*
-		* This class represents a single row in the classified data set. 
-		* It consists of features and a label.
-		*/
-		struct LabeledData {
-			// C'tor
-			LabeledData(const std::string& line);
-
-			// Data Members
-			std::vector<double> features;
-			std::string label;
-		};
-
 		// Data Members
 		std::vector<LabeledData> dataSet;
 	};
