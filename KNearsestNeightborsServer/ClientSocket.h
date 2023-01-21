@@ -1,3 +1,6 @@
+#ifndef __CLIENT_SOCKET_H
+#define __CLIENT_SOCKET_H
+
 #include <string>
 
 namespace network
@@ -25,7 +28,9 @@ namespace network
 		ClientSocket& operator=(ClientSocket&& other);
 		
 		// Methods
-		void Send(const std::string& dataToSend) const;
-		std::string Receive(int maxBufferSize = 4096) const;
+		void send(const std::string& dataToSend) const;
+		std::string receive(int maxBufferSize = 4096) const;
 	};
 }
+
+#endif
