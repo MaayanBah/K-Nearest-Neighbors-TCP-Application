@@ -1,17 +1,15 @@
 
-#include <vector>
-#include <memory>
 #include <stdexcept>
 #include <iostream>
 
-#include "Commands/IO.h"
-#include "Commands/Command.h"
-#include "Commands/UploadCommand.h"
-#include "Commands/AlgorithmSettingsCommand.h"
-#include "ParseMethods.h"
-#include "ClientThread.h"
-#include "LabeledDataSet.h"
-#include "Distances.h"
+#include "ClientApp/IO.h"
+#include "ClientApp/Command.h"
+#include "ClientApp/UploadCommand.h"
+#include "ClientApp/AlgorithmSettingsCommand.h"
+#include "ClientApp/ClientThread.h"
+#include "Utils/ParseMethods.h"
+#include "Dataset/LabeledDataSet.h"
+#include "Dataset/Distances.h"
 
 using namespace std;
 using namespace app;

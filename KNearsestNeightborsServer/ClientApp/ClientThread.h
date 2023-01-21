@@ -1,8 +1,12 @@
 #ifndef __CLIENT_THREAD_H
 #define __CLIENT_THREAD_H
 
-#include "ClientSocket.h"
+#include "Network/ClientSocket.h"
+#include "ClientApp/Command.h"
+
 #include <utility>
+#include <vector>
+#include <memory>
 
 namespace app
 {

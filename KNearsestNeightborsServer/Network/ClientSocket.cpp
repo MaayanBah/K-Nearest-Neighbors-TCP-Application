@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdexcept>
 #include <utility>
-#include "ClientSocket.h"
+#include "Network/ClientSocket.h"
 
 using namespace network;
 using namespace std;

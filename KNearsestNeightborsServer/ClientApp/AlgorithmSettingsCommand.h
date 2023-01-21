@@ -1,8 +1,8 @@
 #ifndef __ALGORITHM_SETTINGS_COMMAND_H
 #define __ALGORITHM_SETTINGS_COMMAND_H
 
-#include "Commands/Command.h"
-#include "Distances.h"
+#include "ClientApp/Command.h"
+#include "Dataset/Distances.h"
 
 namespace app {
     class AlgorithmSettingsCommand : public Command {

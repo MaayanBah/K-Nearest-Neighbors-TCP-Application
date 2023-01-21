@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-#include "Distances.h"
+#include "Dataset/Distances.h"
 
 namespace data {
 	class LabeledDataSet {

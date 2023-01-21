@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-#include "ClientSocket.h"
+#include "Network/ClientSocket.h"
 
 namespace app {
     class DefaultIO {

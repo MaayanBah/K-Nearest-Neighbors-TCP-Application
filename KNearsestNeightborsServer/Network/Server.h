@@ -1,7 +1,7 @@
-#ifndef __CLIENT_SOCKET_H
-#define __CLIENT_SOCKET_H
+#ifndef __CLIENT_SERVER_H
+#define __CLIENT_SERVER_H
 
-#include "ClientSocket.h"
+#include "Network/ClientSocket.h"
 
 namespace network
 {

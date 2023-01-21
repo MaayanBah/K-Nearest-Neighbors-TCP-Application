@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "Commands/IO.h"
-#include "LabeledDataSet.h"
+#include "ClientApp/IO.h"
+#include "Dataset/LabeledDataSet.h"
 
 namespace app {
     class Command {

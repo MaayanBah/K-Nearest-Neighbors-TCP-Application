@@ -1,8 +1,8 @@
 #include <sstream>
 #include <unordered_map>
 
-#include "Commands/AlgorithmSettingsCommand.h"
-#include "ParseMethods.h"
+#include "ClientApp/AlgorithmSettingsCommand.h"
+#include "Utils/ParseMethods.h"
 
 using namespace app;
 using namespace std;

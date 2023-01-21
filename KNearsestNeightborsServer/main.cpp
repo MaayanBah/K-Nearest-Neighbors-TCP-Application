@@ -4,9 +4,9 @@
 #include <thread>
 #include <list>
 
-#include "Server.h"
-#include "ClientThread.h"
-#include "ParseMethods.h"
+#include "Network/Server.h"
+#include "ClientApp/ClientThread.h"
+#include "Utils/ParseMethods.h"
 
 using namespace std;
 using namespace network;
