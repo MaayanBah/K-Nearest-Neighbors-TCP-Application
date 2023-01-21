@@ -49,6 +49,101 @@ bool validateClientInput(const string& clientData)
 	return !stream.fail();
 }
 
+//check if number or string
+bool checkNumber(const string& str) {
+   for (int i = 0; i < str.length(); i++) {
+		if (isdigit(str[i]) == false) {
+			return false;
+		}
+   }
+   return true;
+}
+
+void responseFromServer(const int& sock) {
+	char buf[4096];
+	// Wait for a response from the server
+	memset(buf, 0, sizeof(buf));
+	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
+	if (bytesReceived == -1) {
+		cout << "There was an error getting response from server" << endl;
+		return;
+	}
+	
+	if (bytesReceived == 0) {
+		cout << "Server unavailable, the socket disconnected.\n";
+		return;
+	}
+	
+	cout << string(buf, bytesReceived) << endl;
+}
+
+void sendToServer(const int& sock, const string& inputFromUserToSend) {
+	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
+		cout << "Couldn't send to server! Whoops!" << endl;
+		return;
+	}
+}
+
+void uploadUnclassifiedCSV(const int& sock) {
+	string localTrainFile;
+	cout << "Please upload your local train CSV file." << endl;
+	getline(cin, localTrainFile);
+	//cin >> localTrainFile;
+	// Send to server
+	sendToServer(sock, localTrainFile);
+	responseFromServer(sock);
+	string localTestFile;
+	cout << "Please upload your local test CSV file." << endl;
+	//cin >> localTestFile;
+	getline(cin, localTestFile);
+	// Send to server
+	sendToServer(sock, localTestFile);
+	responseFromServer(sock);
+}
+
+void algorithemSettings(const int& sock) {
+	// here we should get a response from the server of the
+	// initial k and metric (Maayan's implement)
+	//responseFromServer(sock); ----> to uncomment it when Maayan finish implement
+	string userInput;
+	// get k and metric from user
+	cin.ignore();
+	getline(cin, userInput);
+	if (userInput.length() == 0) {
+		//cout << "it was an Enter" << endl;
+		// Maayan implement - should reponse the menu
+		//responseFromServer(sock);
+	} else {
+		// send them to the server
+		sendToServer(sock, userInput);
+		// Maayan implement - if its valid - response back the menu
+		// else 'invalid value for metric' or/and 'invalid value for K'
+		responseFromServer(sock);
+	}
+}
+
+void classifyData(const int& sock) {
+	// waiting for a response from server
+	// Maayan implement : the server runs the CSV files from option 1
+	// and server response back 'classifying data complete' or 'please upload data'
+	// the get back to the menu
+	responseFromServer(sock);
+}
+
+void displayResults(const int& sock) {
+	string userInput;
+	// the server response list of classifields, or 'plase upload data' / 'please classify the data'
+	responseFromServer(sock);
+	// after we get the response, if the user use the enter key, we get back to the menu
+	cin.ignore();
+	getline(cin, userInput);
+	if (userInput.length() == 0) {
+		//cout << "it was an Enter" << endl;
+		// Maayan implement - should reponse the menu
+		responseFromServer(sock);
+	}
+}
+
 int main(int argc, char* argv[]) {
 	argc--;
 	if (argc != 2)
@@ -100,43 +195,51 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // while loop:
-    char buf[4096];
+
     string userInput;
-
     do {
-        // Enter lines of text 
+		// to uncomment it once the server sends a menu
+		//responseFromServer(sock);
+		cout << "lets pretend this is the menu that the server sents" << endl;
+		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
-		
-		while (userInput != "-1" && !validateClientInput(userInput)) {
-			cout << "invalid input\n";
-			getline(cin, userInput);
-		}
-		
-		if (userInput == "-1") {
-			break;
+
+		// If the client didn't enter a number
+		if (checkNumber(userInput) == false) {
+			cout << "You should enter a number from the menu" << endl;
+			continue;
 		}
 
-        // Send to server
-        if (send(sock, userInput.c_str(), userInput.size() + 1, 0) == -1) {
-            cout << "Couldn't send to server! Whoops!" << endl;
-            continue;
-        }
-
-        // Wait for a response
-        memset(buf, 0, sizeof(buf));
-        int bytesReceived = recv(sock, buf, sizeof(buf), 0);
-        if (bytesReceived == -1) {
-            cout << "There was an error getting response from server" << endl;
-			break;
-        }
-		
-		if (bytesReceived == 0) {
-			cout << "Server unavailable, the socket disconnected.\n";
-			break;
-		}
-		
-		cout << string(buf, bytesReceived) << endl;
+		switch (stoi(userInput)) {
+			case 1:
+				cout << "It's 1!" << endl;
+				uploadUnclassifiedCSV(sock);
+				// Maayan need to implement: "Upload complete.""
+				// or "invalid input"
+				// as a feedback of the server
+				break;
+			case 2:
+				algorithemSettings(sock);
+				break;
+			case 3:
+				cout << "It's 3!" << endl;
+				classifyData(sock);
+				break;
+			case 4:
+				cout << "It's 4!" << endl;
+				displayResults(sock);
+				break;
+			case 5:
+				cout << "It's 5!" << endl;
+				// will implement later
+				break;
+			case 8:
+				// exit
+				cout << "It's 8!" << endl;
+				break;
+			default:
+				cout << "An invalid number" << endl;
+			}
     } while(true);
 
     close(sock);
