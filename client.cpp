@@ -197,10 +197,11 @@ int main(int argc, char* argv[]) {
 
 
     string userInput;
+	bool shouldExit = false;
+	
     do {
-		// to uncomment it once the server sends a menu
-		//responseFromServer(sock);
-		cout << "lets pretend this is the menu that the server sents" << endl;
+		responseFromServer(sock);
+		
 		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
 
@@ -209,10 +210,11 @@ int main(int argc, char* argv[]) {
 			cout << "You should enter a number from the menu" << endl;
 			continue;
 		}
+		
+		sendToServer(sock, userInput);
 
 		switch (stoi(userInput)) {
 			case 1:
-				cout << "It's 1!" << endl;
 				uploadUnclassifiedCSV(sock);
 				// Maayan need to implement: "Upload complete.""
 				// or "invalid input"
@@ -222,25 +224,21 @@ int main(int argc, char* argv[]) {
 				algorithemSettings(sock);
 				break;
 			case 3:
-				cout << "It's 3!" << endl;
 				classifyData(sock);
 				break;
 			case 4:
-				cout << "It's 4!" << endl;
 				displayResults(sock);
 				break;
 			case 5:
-				cout << "It's 5!" << endl;
 				// will implement later
 				break;
 			case 8:
-				// exit
-				cout << "It's 8!" << endl;
+				shouldExit = true;
 				break;
 			default:
-				cout << "An invalid number" << endl;
+				cout << "An invalid option" << endl;
 			}
-    } while(true);
+    } while(!shouldExit);
 
     close(sock);
     return 0;
