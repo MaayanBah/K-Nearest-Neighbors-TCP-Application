@@ -7,18 +7,12 @@
 namespace app
 {
     struct AppData {
-        // Substructs
-        struct Result {
-            int unclassifiedDataIndex;
-            std::string label;
-        };
-
         // Members
         data::LabeledDataSet dataset;
         int k;
         math::DistanceFactory::DistanceType distanceMethod;
         std::vector<std::vector<double>> unclassifiedData;
-        std::vector<Result> results;
+        std::string classificationResult;
 
         // C'tor
         AppData() : 
