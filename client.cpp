@@ -153,6 +153,8 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	}
 	// Let the server know we finished the sending
 	sendToServer(sock, "1");
+	// should be "upload complete."
+	printResponseFromServer(sock);
 }
 
 void uploadUnclassifiedCSV(const int& sock) {
