@@ -33,7 +33,7 @@ void AlgorithmSettingsCommand::execute() {
     }
 
     int newK;
-    bool wasKParsed = parse(kString, newK) && newK >= 1 && (appData.dataset.size() == 0 || newK <= appData.dataset.size());
+    bool wasKParsed = ParseMethods::parse(kString, newK) && newK >= 1 && (appData.dataset.size() == 0 || newK <= appData.dataset.size());
     if (!wasKParsed) {
         io.write(badIntegerMessage);
     }

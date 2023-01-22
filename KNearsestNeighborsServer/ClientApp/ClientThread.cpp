@@ -1,6 +1,7 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <memory>
 
 #include "ClientApp/IO.h"
 #include "ClientApp/Command.h"
@@ -34,13 +35,12 @@ void ClientThread::operator()(network::ClientSocket client) {
     AppData appData;
     SocketIO socketIO(client);
 
-    vector<unique_ptr<Command>> supportedCommands = {
-        make_unique<UploadCommand>(socketIO, appData),
-        make_unique<AlgorithmSettingsCommand>(socketIO, appData),
-        make_unique<ClassifyDataCommand>(socketIO, appData),
-        make_unique<DownloadCommand>("display results", socketIO, appData),
-        make_unique<DownloadCommand>("download results", socketIO, appData),
-    };
+    vector<unique_ptr<Command>> supportedCommands;
+    supportedCommands.push_back(unique_ptr<UploadCommand>(new UploadCommand(socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<AlgorithmSettingsCommand>(new AlgorithmSettingsCommand(socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<ClassifyDataCommand>(new ClassifyDataCommand(socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("display results", socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("download results", socketIO, appData)));
 
     string response;
 
@@ -54,7 +54,7 @@ void ClientThread::operator()(network::ClientSocket client) {
             }
 
             int userChoice;
-            if (!parse(response, userChoice)) {
+            if (!ParseMethods::parse(response, userChoice)) {
                 client.send("invalid input\n");
                 continue;
             }

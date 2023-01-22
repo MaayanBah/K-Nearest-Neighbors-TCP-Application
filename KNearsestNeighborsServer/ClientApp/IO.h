@@ -1,3 +1,6 @@
+#ifndef __IO_H
+#define __IO_H
+
 #include <string>
 #include <iostream>
 
@@ -50,3 +53,5 @@ namespace app {
         }
     };
 }
+
+#endif

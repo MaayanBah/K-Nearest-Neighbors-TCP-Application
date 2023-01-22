@@ -1,3 +1,5 @@
+#ifndef __APP_DATA_H
+#define __APP_DATA_H
 
 #include "Dataset/LabeledDataSet.h"
 #include "Dataset/Distances.h"
@@ -21,3 +23,5 @@ namespace app
         }
     };
 }
+
+#endif

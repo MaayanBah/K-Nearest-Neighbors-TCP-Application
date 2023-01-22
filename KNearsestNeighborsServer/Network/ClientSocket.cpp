@@ -28,14 +28,14 @@ ClientSocket& ClientSocket::operator=(ClientSocket&& other) {
 	return *this;
 }
 
-void ClientSocket::Send(const string& dataToSend) const {
+void ClientSocket::send(const string& dataToSend) const {
 	string data = dataToSend + "\0";
-	if (send(_socketID, data.c_str(), data.size(), 0) == -1) {
+	if (::send(_socketID, data.c_str(), data.size(), 0) == -1) {
 		throw runtime_error(std::string("Error sending with client socket! Error code: ") + std::to_string(errno));
 	}
 }
 
-string ClientSocket::Receive(int maxBufferSize) const {
+string ClientSocket::receive(int maxBufferSize) const {
 	char buf[4096];
 	memset(buf, 0, 4096);
 	int bytesReceived = recv(_socketID, buf, sizeof(buf), 0);

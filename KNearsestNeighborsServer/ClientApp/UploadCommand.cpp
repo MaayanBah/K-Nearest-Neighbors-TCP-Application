@@ -82,7 +82,7 @@ bool UploadCommand::parseUnclassifiedFile(const std::string& unclassifiedFile,
     // Go over the file line by line
     while (getline(unClassifiedFileStream, line)) {
         vector<double> unclassifiedVector;
-        if (!parse(line, unclassifiedVector)) {
+        if (!ParseMethods::parse(line, unclassifiedVector)) {
             return false;
         }
 

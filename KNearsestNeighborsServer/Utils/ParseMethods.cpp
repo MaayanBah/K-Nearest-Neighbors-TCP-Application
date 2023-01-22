@@ -12,7 +12,7 @@ using namespace std;
 * Output:
 *	Whether the parse succeeded
 */
-bool parse(const string& integerString, int& parsedInteger) {
+bool ParseMethods::parse(const string& integerString, int& parsedInteger) {
     stringstream stream(integerString);
     stream >> parsedInteger;
 
@@ -26,7 +26,7 @@ bool parse(const string& integerString, int& parsedInteger) {
 * Output:
 *	Whether the parse succeeded
 */
-bool parse(const std::string& doublesString, vector<double>& parsedDoubles) {
+bool ParseMethods::parse(const std::string& doublesString, vector<double>& parsedDoubles) {
     stringstream stream(doublesString);
 
     while (!stream.eof() && !stream.fail()) {

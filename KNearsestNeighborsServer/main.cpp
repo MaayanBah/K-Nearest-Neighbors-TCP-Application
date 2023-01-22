@@ -19,7 +19,7 @@ int main(int numberOfArguments, char* arguments[]) {
     }
 	
 	int port;
-	if (!app::parse(arguments[2], port) || port > 65535 || port < 0) {
+	if (!app::ParseMethods::parse(arguments[2], port) || port > 65535 || port < 0) {
 		cout << "Invalid port given: " << arguments[2] << endl;
 		return 0;
 	}
