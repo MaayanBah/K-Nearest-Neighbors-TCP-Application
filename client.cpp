@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <unordered_set>
+#include <fstream>
 
 using namespace std;
 
@@ -47,6 +48,145 @@ bool validateClientInput(const string& clientData)
     stream >> k;
 	
 	return !stream.fail();
+}
+
+//check if number or string
+bool checkNumber(const string& str) {
+   for (int i = 0; i < str.length(); i++) {
+		if (isdigit(str[i]) == false) {
+			return false;
+		}
+   }
+   return true;
+}
+
+void responseFromServer(const int& sock) {
+	char buf[4096];
+	// Wait for a response from the server
+	memset(buf, 0, sizeof(buf));
+	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
+	if (bytesReceived == -1) {
+		cout << "There was an error getting response from server" << endl;
+		return;
+	}
+	
+	if (bytesReceived == 0) {
+		cout << "Server unavailable, the socket disconnected.\n";
+		return;
+	}
+	
+	cout << string(buf, bytesReceived) << endl;
+}
+
+void sendToServer(const int& sock, const string& inputFromUserToSend) {
+	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
+		cout << "Couldn't send to server! Whoops!" << endl;
+		return;
+	}
+}
+
+
+void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
+	const int FILE_CHUNK_SIZE = 4096; 
+
+	// Check if file exists
+	ifstream file(localTrainFile, ios::binary);
+	if(!file) {
+		cout<<"No such file - invalid input" << endl;
+		// send to server "-1", server should response "invalid input"
+		// because the path is invalid
+		sendToServer(sock, "-1");
+		responseFromServer(sock);
+		return;
+	}
+
+	// Get file size
+	file.seekg(0, ios::end);
+	unsigned int fileSize = file.tellg();
+	file.close();
+
+	// Get the file
+	char* fileBuffer = new char[fileSize];
+	file.open(localTrainFile, ios::binary);
+	file.seekg (0, ios::beg);
+	file.read (fileBuffer, fileSize);
+	file.close();
+
+	// Send file in chunks
+	unsigned int bytesSent = 0;
+	int bytesToSend = 0;
+	string response;
+	while(bytesSent < fileSize) {
+		if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
+			bytesToSend = FILE_CHUNK_SIZE;
+		} else {
+			bytesToSend = fileSize - bytesSent;
+		}
+
+		// Send the file in chunks to server and wait for a response of getting
+		sendToServer(sock, fileBuffer + bytesSent);
+		cout << fileBuffer + bytesSent;
+		// Maayan implement: if the server didn't get the file, return error and exit
+		responseFromServer(sock);
+		bytesSent += bytesToSend;
+	}
+	delete [] fileBuffer;
+}
+
+void uploadUnclassifiedCSV(const int& sock) {
+	string localTrainFile;
+	cout << "Please upload your local train CSV file." << endl;
+	getline(cin, localTrainFile); 
+	sendFileToServerByChuncks(sock, localTrainFile);
+
+	string localTestFile;
+	cout << "Please upload your local test CSV file." << endl;
+	getline(cin, localTestFile);
+	sendFileToServerByChuncks(sock, localTestFile);
+}
+
+
+void algorithemSettings(const int& sock) {
+	// here we should get a response from the server of the
+	// initial k and metric (Maayan's implement)
+	//responseFromServer(sock); ----> to uncomment it when Maayan finish implement
+	string userInput;
+	// get k and metric from user
+	cin.ignore();
+	getline(cin, userInput);
+	if (userInput.length() == 0) {
+		//cout << "it was an Enter" << endl;
+		// Maayan implement - should reponse the menu
+		//responseFromServer(sock);
+	} else {
+		// send them to the server
+		sendToServer(sock, userInput);
+		// Maayan implement - if its valid - response back the menu
+		// else 'invalid value for metric' or/and 'invalid value for K'
+		responseFromServer(sock);
+	}
+}
+
+void classifyData(const int& sock) {
+	// waiting for a response from server
+	// Maayan implement : the server runs the CSV files from option 1
+	// and server response back 'classifying data complete' or 'please upload data'
+	// the get back to the menu
+	responseFromServer(sock);
+}
+
+void displayResults(const int& sock) {
+	string userInput;
+	// the server response list of classifields, or 'plase upload data' / 'please classify the data'
+	responseFromServer(sock);
+	// after we get the response, if the user use the enter key, we get back to the menu
+	cin.ignore();
+	getline(cin, userInput);
+	if (userInput.length() == 0) {
+		//cout << "it was an Enter" << endl;
+		// Maayan implement - should reponse the menu
+		responseFromServer(sock);
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -100,44 +240,52 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // while loop:
-    char buf[4096];
+
     string userInput;
-
+	bool shouldExit = false;
+	
     do {
-        // Enter lines of text 
+		// uncomment it when Maayan implement the menu
+		//responseFromServer(sock);
+		cout << "a manu" << endl;
+		
+		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
-		
-		while (userInput != "-1" && !validateClientInput(userInput)) {
-			cout << "invalid input\n";
-			getline(cin, userInput);
-		}
-		
-		if (userInput == "-1") {
-			break;
-		}
 
-        // Send to server
-        if (send(sock, userInput.c_str(), userInput.size() + 1, 0) == -1) {
-            cout << "Couldn't send to server! Whoops!" << endl;
-            continue;
-        }
-
-        // Wait for a response
-        memset(buf, 0, sizeof(buf));
-        int bytesReceived = recv(sock, buf, sizeof(buf), 0);
-        if (bytesReceived == -1) {
-            cout << "There was an error getting response from server" << endl;
-			break;
-        }
-		
-		if (bytesReceived == 0) {
-			cout << "Server unavailable, the socket disconnected.\n";
-			break;
+		// If the client didn't enter a number
+		if (checkNumber(userInput) == false) {
+			cout << "An invalid option" << endl;
+			continue;
 		}
 		
-		cout << string(buf, bytesReceived) << endl;
-    } while(true);
+		sendToServer(sock, userInput);
+
+		switch (stoi(userInput)) {
+			case 1:
+				uploadUnclassifiedCSV(sock);
+				// Maayan need to implement: "Upload complete.""
+				// or "invalid input"
+				// as a feedback of the server
+				break;
+			case 2:
+				algorithemSettings(sock);
+				break;
+			case 3:
+				classifyData(sock);
+				break;
+			case 4:
+				displayResults(sock);
+				break;
+			case 5:
+				// will implement later
+				break;
+			case 8:
+				shouldExit = true;
+				break;
+			default:
+				cout << "An invalid option" << endl;
+			}
+    } while(!shouldExit);
 
     close(sock);
     return 0;
