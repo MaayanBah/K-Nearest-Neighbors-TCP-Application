@@ -6,6 +6,8 @@
 #include "ClientApp/Command.h"
 #include "ClientApp/UploadCommand.h"
 #include "ClientApp/AlgorithmSettingsCommand.h"
+#include "ClientApp/ClassifyDataCommand.h"
+#include "ClientApp/DownloadCommand.h"
 #include "ClientApp/ClientThread.h"
 #include "ClientApp/AppData.h"
 #include "Utils/ParseMethods.h"
@@ -33,7 +35,11 @@ void ClientThread::operator()(network::ClientSocket client) {
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands = {
-        make_unique<AlgorithmSettingsCommand>(socketIO, appData)
+        make_unique<UploadCommand>(socketIO, appData),
+        make_unique<AlgorithmSettingsCommand>(socketIO, appData),
+        make_unique<ClassifyDataCommand>(socketIO, appData),
+        make_unique<DownloadCommand>("display results", socketIO, appData),
+        make_unique<DownloadCommand>("download results", socketIO, appData),
     };
 
     string response;
