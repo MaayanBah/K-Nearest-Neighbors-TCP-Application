@@ -60,7 +60,7 @@ bool checkNumber(const string& str) {
    return true;
 }
 
-void responseFromServer(const int& sock) {
+void printResponseFromServer(const int& sock) {
 	char buf[4096];
 	// Wait for a response from the server
 	memset(buf, 0, sizeof(buf));
@@ -78,6 +78,22 @@ void responseFromServer(const int& sock) {
 	cout << string(buf, bytesReceived) << endl;
 }
 
+string returnResponseFromServer(const int& sock) {
+	char buf[4096];
+	// Wait for a response from the server
+	memset(buf, 0, sizeof(buf));
+	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
+	if (bytesReceived == -1) {
+		cout << "There was an error getting response from server" << endl;
+		return "Error";
+	}
+	
+	if (bytesReceived == 0) {
+		cout << "Server unavailable, the socket disconnected.\n";
+		return "Error";
+	}
+	return string(buf, bytesReceived);
+}
 void sendToServer(const int& sock, const string& inputFromUserToSend) {
 	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
 		cout << "Couldn't send to server! Whoops!" << endl;
@@ -85,6 +101,12 @@ void sendToServer(const int& sock, const string& inputFromUserToSend) {
 	}
 }
 
+void sendToServer(const int& sock, const string& inputFromUserToSend, const int& bytesToSend) {
+	if (send(sock, inputFromUserToSend.c_str(), bytesToSend + 1, 0) == -1) {
+		cout << "Couldn't send to server! Whoops!" << endl;
+		return;
+	}
+}
 
 void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	const int FILE_CHUNK_SIZE = 4096; 
@@ -92,11 +114,7 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	// Check if file exists
 	ifstream file(localTrainFile, ios::binary);
 	if(!file) {
-		cout<<"No such file - invalid input" << endl;
-		// send to server "-1", server should response "invalid input"
-		// because the path is invalid
-		sendToServer(sock, "-1");
-		responseFromServer(sock);
+		cout<<"invalid input" << endl;
 		return;
 	}
 
@@ -112,25 +130,29 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	file.read (fileBuffer, fileSize);
 	file.close();
 
-	// Send file in chunks
-	unsigned int bytesSent = 0;
-	int bytesToSend = 0;
-	string response;
-	while(bytesSent < fileSize) {
-		if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
-			bytesToSend = FILE_CHUNK_SIZE;
-		} else {
-			bytesToSend = fileSize - bytesSent;
-		}
+	// Let the server know we start the sending
+	sendToServer(sock, "0");
+	if (returnResponseFromServer(sock) == "1") {
+		// Send file in chunks
+		unsigned int bytesSent = 0;
+		int bytesToSend = 0;
+		while(bytesSent < fileSize) {
+			if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
+				bytesToSend = FILE_CHUNK_SIZE;
+			} else {
+				bytesToSend = fileSize - bytesSent;
+			}
 
-		// Send the file in chunks to server and wait for a response of getting
-		sendToServer(sock, fileBuffer + bytesSent);
-		cout << fileBuffer + bytesSent;
-		// Maayan implement: if the server didn't get the file, return error and exit
-		responseFromServer(sock);
-		bytesSent += bytesToSend;
+			// Send the file in chunks to server and wait for a response of getting
+			sendToServer(sock, fileBuffer + bytesSent, bytesToSend);
+			// Maayan implement: if the server didn't get the file, return error and exit
+			printResponseFromServer(sock);
+			bytesSent += bytesToSend;
+		}
+		delete [] fileBuffer;
 	}
-	delete [] fileBuffer;
+	// Let the server know we finished the sending
+	sendToServer(sock, "1");
 }
 
 void uploadUnclassifiedCSV(const int& sock) {
@@ -144,6 +166,7 @@ void uploadUnclassifiedCSV(const int& sock) {
 	getline(cin, localTestFile);
 	sendFileToServerByChuncks(sock, localTestFile);
 }
+
 
 void algorithemSettings(const int& sock) {
 	// here we should get a response from the server of the
@@ -162,7 +185,7 @@ void algorithemSettings(const int& sock) {
 		sendToServer(sock, userInput);
 		// Maayan implement - if its valid - response back the menu
 		// else 'invalid value for metric' or/and 'invalid value for K'
-		responseFromServer(sock);
+		printResponseFromServer(sock);
 	}
 }
 
@@ -171,20 +194,20 @@ void classifyData(const int& sock) {
 	// Maayan implement : the server runs the CSV files from option 1
 	// and server response back 'classifying data complete' or 'please upload data'
 	// the get back to the menu
-	responseFromServer(sock);
+	printResponseFromServer(sock);
 }
 
 void displayResults(const int& sock) {
 	string userInput;
 	// the server response list of classifields, or 'plase upload data' / 'please classify the data'
-	responseFromServer(sock);
+	printResponseFromServer(sock);
 	// after we get the response, if the user use the enter key, we get back to the menu
 	cin.ignore();
 	getline(cin, userInput);
 	if (userInput.length() == 0) {
 		//cout << "it was an Enter" << endl;
 		// Maayan implement - should reponse the menu
-		responseFromServer(sock);
+		printResponseFromServer(sock);
 	}
 }
 
@@ -253,7 +276,6 @@ int main(int argc, char* argv[]) {
 
 		// If the client didn't enter a number
 		if (checkNumber(userInput) == false) {
-
 			cout << "An invalid option" << endl;
 			continue;
 		}
