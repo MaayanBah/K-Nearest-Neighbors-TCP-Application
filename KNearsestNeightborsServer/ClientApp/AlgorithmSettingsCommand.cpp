@@ -10,7 +10,7 @@ using namespace math;
 
 void AlgorithmSettingsCommand::execute() {
     io.write(string("The current KNN parameters are: K = ") + 
-             to_string(k) + 
+             to_string(appData.k) + 
              ", distance metric = " +
              DistanceFactory::distanceName(appData.distanceMethod) + "\n");
     
@@ -33,7 +33,7 @@ void AlgorithmSettingsCommand::execute() {
     }
 
     int newK;
-    bool wasKParsed = parse(kString, newK) && newK >= 1 && newK <= appData.dataset.size();
+    bool wasKParsed = parse(kString, newK) && newK >= 1 && (appData.dataset.size() == 0 || newK <= appData.dataset.size());
     if (!wasKParsed) {
         io.write(badIntegerMessage);
     }

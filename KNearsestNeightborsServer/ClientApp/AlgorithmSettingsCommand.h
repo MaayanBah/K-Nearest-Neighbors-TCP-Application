@@ -9,15 +9,13 @@ namespace app {
     class AlgorithmSettingsCommand : public Command {
     private:
         // Members
-        DefaultIO& io;
         AppData& appData;
 
     public:
         // C'tor
         AlgorithmSettingsCommand(DefaultIO& io, 
                                  AppData& appData) :
-            Command("algorithm settings"),
-            io(io),
+            Command("algorithm settings", io),
             appData(appData) {
         }
 

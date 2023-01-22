@@ -11,11 +11,16 @@ namespace app {
     private:
         // Members
         std::string descriptionMember;
+    
+    protected:
+        // Members
+        DefaultIO& io;
 
     public:
         // C'tor
-        Command(std::string description) : 
-            descriptionMember(description) {
+        Command(std::string description, DefaultIO& io) : 
+            descriptionMember(std::move(description)),
+            io(io) {
         }
 
         // D'tor
