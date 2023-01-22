@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <unordered_set>
+#include <fstream>
 
 using namespace std;
 
@@ -84,21 +85,64 @@ void sendToServer(const int& sock, const string& inputFromUserToSend) {
 	}
 }
 
+
+void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
+	const int FILE_CHUNK_SIZE = 4096; 
+
+	// Check if file exists
+	ifstream file(localTrainFile, ios::binary);
+	if(!file) {
+		cout<<"No such file - invalid input" << endl;
+		// send to server "-1", server should response "invalid input"
+		// because the path is invalid
+		sendToServer(sock, "-1");
+		responseFromServer(sock);
+		return;
+	}
+
+	// Get file size
+	file.seekg(0, ios::end);
+	unsigned int fileSize = file.tellg();
+	file.close();
+
+	// Get the file
+	char* fileBuffer = new char[fileSize];
+	file.open(localTrainFile, ios::binary);
+	file.seekg (0, ios::beg);
+	file.read (fileBuffer, fileSize);
+	file.close();
+
+	// Send file in chunks
+	unsigned int bytesSent = 0;
+	int bytesToSend = 0;
+	string response;
+	while(bytesSent < fileSize) {
+		if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
+			bytesToSend = FILE_CHUNK_SIZE;
+		} else {
+			bytesToSend = fileSize - bytesSent;
+		}
+
+		// Send the file in chunks to server and wait for a response of getting
+		sendToServer(sock, fileBuffer + bytesSent);
+		cout << fileBuffer + bytesSent;
+		// Maayan implement: if the server didn't get the file, return error and exit
+		responseFromServer(sock);
+		bytesSent += bytesToSend;
+	}
+	delete [] fileBuffer;
+}
+
 void uploadUnclassifiedCSV(const int& sock) {
 	string localTrainFile;
 	cout << "Please upload your local train CSV file." << endl;
-	getline(cin, localTrainFile);
-	//cin >> localTrainFile;
-	// Send to server
-	sendToServer(sock, localTrainFile);
-	responseFromServer(sock);
+	getline(cin, localTrainFile); 
+	sendFileToServerByChuncks(sock, localTrainFile);
+
 	string localTestFile;
 	cout << "Please upload your local test CSV file." << endl;
-	//cin >> localTestFile;
 	getline(cin, localTestFile);
-	// Send to server
-	sendToServer(sock, localTestFile);
-	responseFromServer(sock);
+	sendFileToServerByChuncks(sock, localTestFile);
 }
 
 void algorithemSettings(const int& sock) {
@@ -200,14 +244,17 @@ int main(int argc, char* argv[]) {
 	bool shouldExit = false;
 	
     do {
-		responseFromServer(sock);
+		// uncomment it when Maayan implement the menu
+		//responseFromServer(sock);
+		cout << "a manu" << endl;
 		
 		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
 
 		// If the client didn't enter a number
 		if (checkNumber(userInput) == false) {
-			cout << "You should enter a number from the menu" << endl;
+
+			cout << "An invalid option" << endl;
 			continue;
 		}
 		
