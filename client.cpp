@@ -94,6 +94,7 @@ string returnResponseFromServer(const int& sock) {
 	}
 	return string(buf, bytesReceived);
 }
+
 void sendToServer(const int& sock, const string& inputFromUserToSend) {
 	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
 		cout << "Couldn't send to server! Whoops!" << endl;
@@ -109,7 +110,7 @@ void sendToServer(const int& sock, const string& inputFromUserToSend, const int&
 }
 
 void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
-	const int FILE_CHUNK_SIZE = 4096; 
+	const int FILE_CHUNK_SIZE = 4095; 
 
 	// Check if file exists
 	ifstream file(localTrainFile, ios::binary);
@@ -130,27 +131,32 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	file.read (fileBuffer, fileSize);
 	file.close();
 
-	// Let the server know we start the sending
-	sendToServer(sock, "0");
-	if (returnResponseFromServer(sock) == "1") {
-		// Send file in chunks
-		unsigned int bytesSent = 0;
-		int bytesToSend = 0;
-		while(bytesSent < fileSize) {
-			if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
-				bytesToSend = FILE_CHUNK_SIZE;
-			} else {
-				bytesToSend = fileSize - bytesSent;
-			}
-
-			// Send the file in chunks to server and wait for a response of getting
-			sendToServer(sock, fileBuffer + bytesSent, bytesToSend);
-			// Maayan implement: if the server didn't get the file, return error and exit
-			printResponseFromServer(sock);
-			bytesSent += bytesToSend;
+	// Send file in chunks
+	unsigned int bytesSent = 0;
+	int bytesToSend = 0;
+	while(bytesSent < fileSize) {
+		if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
+			bytesToSend = FILE_CHUNK_SIZE;
+		} else {
+			bytesToSend = fileSize - bytesSent;
 		}
-		delete [] fileBuffer;
+		string initial = "0";
+		string buf = initial.append(fileBuffer + bytesSent);
+		// Send the file in chunks (with initial "0") to server and wait for a response of the server
+		sendToServer(sock, buf, bytesToSend+1);
+		//cout << buf;
+		//bytesSent += bytesToSend;
+
+		// if the server confirm to get the chunk
+		if (returnResponseFromServer(sock) == "1") {
+			bytesSent += bytesToSend;
+		} else if (returnResponseFromServer(sock) == "2") {
+			cout << "There was an error with the content of the file" << endl;
+			return;
+		}
 	}
+	delete [] fileBuffer;
+	
 	// Let the server know we finished the sending
 	sendToServer(sock, "1");
 	// should be "upload complete."
