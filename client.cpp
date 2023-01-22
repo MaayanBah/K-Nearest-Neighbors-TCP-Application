@@ -145,7 +145,6 @@ void uploadUnclassifiedCSV(const int& sock) {
 	sendFileToServerByChuncks(sock, localTestFile);
 }
 
-
 void algorithemSettings(const int& sock) {
 	// here we should get a response from the server of the
 	// initial k and metric (Maayan's implement)
@@ -254,6 +253,7 @@ int main(int argc, char* argv[]) {
 
 		// If the client didn't enter a number
 		if (checkNumber(userInput) == false) {
+
 			cout << "An invalid option" << endl;
 			continue;
 		}
