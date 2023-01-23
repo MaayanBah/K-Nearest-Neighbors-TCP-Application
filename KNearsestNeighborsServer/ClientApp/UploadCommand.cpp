@@ -13,12 +13,12 @@ std::string UploadCommand::getFileFromIO() {
 
     while (currentPacketReceived[0] != FINISHED_MARK) {
         if (currentPacketReceived[0] != DATA_MARK) {
-            io.write(to_string(ERROR_MARK));
+            io.write(string(1, ERROR_MARK));
             break;
         }
 
         uploadedData += currentPacketReceived.substr(1);
-        io.write(to_string(FINISHED_MARK));
+        io.write(string(1, FINISHED_MARK));
         currentPacketReceived = io.read();
     }
 
@@ -101,7 +101,7 @@ void UploadCommand::execute() {
 
     vector<data::LabeledDataSet::LabeledData> classifiedLabels;
     if (!parseClassifiedFile(classifiedFile, classifiedLabels) || classifiedLabels.size() < appData.k) {
-        io.write(to_string(ERROR_MARK));
+        io.write(string(1, ERROR_MARK));
         return;
     }
 
@@ -110,7 +110,7 @@ void UploadCommand::execute() {
 
     vector<vector<double>> unclassifiedVectors;
     if (!parseUnclassifiedFile(unclassifiedFile, unclassifiedVectors, classifiedLabels[0].features.size()) || unclassifiedVectors.empty()) {
-        io.write(to_string(ERROR_MARK));
+        io.write(string(1, ERROR_MARK));
         return;
     }
 

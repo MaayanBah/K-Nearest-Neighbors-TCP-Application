@@ -24,11 +24,14 @@ ClientThread::ClientThread() {
 
 void ClientThread::sendMenu(const network::ClientSocket& client,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
+    string menu;
 	for (int index = 0; index < supportedCommands.size(); index++) {
-        client.send(to_string(index + 1) + ". " + supportedCommands[index]->description() + "\n");
-	}
+        menu += to_string(index + 1) + ". " + supportedCommands[index]->description() + "\n";
+    }
 
-    client.send(to_string(EXIT_OPTION) + ". Exit\n");
+    menu += to_string(EXIT_OPTION) + ". Exit\n";
+
+    client.send(menu);
 }
 
 void ClientThread::operator()(network::ClientSocket client) {

@@ -15,7 +15,8 @@ void AlgorithmSettingsCommand::execute() {
              DistanceFactory::distanceName(appData.distanceMethod) + "\n");
     
     std::string response = io.read();
-    if (response == "\n") {
+
+    if (response.empty()) {
         return;
     }
 
