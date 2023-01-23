@@ -11,8 +11,10 @@
 #include <string.h>
 #include <unordered_set>
 #include <fstream>
-
+#include <thread>
+#include <pthread.h>
 using namespace std;
+#define NUM_THREADS 5
 
 bool validateClientInput(const string& clientData)
 {
@@ -177,46 +179,96 @@ void uploadUnclassifiedCSV(const int& sock) {
 
 
 void algorithemSettings(const int& sock) {
-	// here we should get a response from the server of the
-	// initial k and metric (Maayan's implement)
-	//responseFromServer(sock); ----> to uncomment it when Maayan finish implement
+	// print the initial k and metric (Maayan's implement) - initialized to 5 and EUC
+	printResponseFromServer(sock); 	// to uncomment it when Maayan finish implement
 	string userInput;
 	// get k and metric from user
-	cin.ignore();
 	getline(cin, userInput);
-	if (userInput.length() == 0) {
-		//cout << "it was an Enter" << endl;
-		// Maayan implement - should reponse the menu
-		//responseFromServer(sock);
-	} else {
-		// send them to the server
-		sendToServer(sock, userInput);
-		// Maayan implement - if its valid - response back the menu
-		// else 'invalid value for metric' or/and 'invalid value for K'
-		printResponseFromServer(sock);
-	}
+	sendToServer(sock, userInput);
+	// Maayan implement - if its valid - response back the menu
+	// else 'invalid value for metric' or/and 'invalid value for K'
+	printResponseFromServer(sock);
 }
 
 void classifyData(const int& sock) {
 	// waiting for a response from server
 	// Maayan implement : the server runs the CSV files from option 1
 	// and server response back 'classifying data complete' or 'please upload data'
-	// the get back to the menu
+	// then get back to the menu
 	printResponseFromServer(sock);
 }
 
 void displayResults(const int& sock) {
-	string userInput;
-	// the server response list of classifields, or 'plase upload data' / 'please classify the data'
-	printResponseFromServer(sock);
-	// after we get the response, if the user use the enter key, we get back to the menu
-	cin.ignore();
-	getline(cin, userInput);
-	if (userInput.length() == 0) {
-		//cout << "it was an Enter" << endl;
-		// Maayan implement - should reponse the menu
-		printResponseFromServer(sock);
+	// get the contect from the server (till 4096 bytes and including initial "0" for each chunk)
+	do {
+		string buf = returnResponseFromServer(sock);
+		// if content is alright - then delete the initial "0" of chunk and print it
+		if (buf.length() > 0 && buf[0] == '0') {
+			sendToServer(sock, "1");
+			buf.erase(buf.begin());
+			cout << buf;
+		}
+		// if content is invalid - then send an error and print a message
+		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
+			sendToServer(sock, "2");
+			cout << "There was a problem receiving the contect" << endl;
+			break;
+		}
+		// if there is no more content to read, server send 1, and client exits
+		if (buf == "1") {
+			break;
+		}
+	} while(true);
+}
+
+void *PrintHello(void *threadid) {
+   long tid;
+   tid = (long)threadid;
+   cout << "Hello World! Thread ID, " << tid << endl;
+   pthread_exit(NULL);
+}
+
+// void *saveTheFile(void *threadid) {
+// 	// here we ask from the user for a path to a file
+// 	// we check if its exists, or we create it
+// 	// and then we start to save all the chunks into the file
+// }
+
+void downloadResults(const int& sock) {
+	// everytime the user enters a path to a file (find or create if doesn't exists)
+	// we open a thread, so this thread actually uses a function, so that function
+	// actually saves the content into this file (in chunks like operation 4).
+	// in the meantime, the father thread doesn't wait to its child
+	// and prints (as a receive from server) the menu again
+	// if the user enters 5 again, and a path to a file, we open one more thread
+	// so we have parallel threads, working both together
+
+	// i need to check if it gives me new threads, or only 1
+	pthread_t thread;
+	cout << "creating thread " << &thread << endl;
+	int rc = pthread_create(&thread, NULL, PrintHello, (void *)&thread);
+
+	if (rc) {
+		cout << "Error:unable to create thread," << rc << endl;
+		exit(-1);
 	}
+
+	//pthread_exit(NULL);
+	// pthread_t threads[NUM_THREADS];
+   	// int rc;
+   	// int i;
+   
+	// for( i = 0; i < NUM_THREADS; i++ ) {
+	// 	cout << "creating thread, " << i << endl;
+	// 	//rc = pthread_create(&threads[i], NULL, saveTheFile, (void *)i);
+	// 	rc = pthread_create(&threads[i], NULL, PrintHello, (void *)&i);
+		
+	// 	if (rc) {
+	// 		cout << "Error:unable to create thread," << rc << endl;
+	// 		exit(-1);
+	// 	}
+	// }
+	// pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[]) {
@@ -293,9 +345,6 @@ int main(int argc, char* argv[]) {
 		switch (stoi(userInput)) {
 			case 1:
 				uploadUnclassifiedCSV(sock);
-				// Maayan need to implement: "Upload complete.""
-				// or "invalid input"
-				// as a feedback of the server
 				break;
 			case 2:
 				algorithemSettings(sock);
@@ -307,7 +356,7 @@ int main(int argc, char* argv[]) {
 				displayResults(sock);
 				break;
 			case 5:
-				// will implement later
+				downloadResults(sock);
 				break;
 			case 8:
 				shouldExit = true;
