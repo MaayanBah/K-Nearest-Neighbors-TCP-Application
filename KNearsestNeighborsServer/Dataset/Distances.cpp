@@ -1,4 +1,4 @@
-#include "Distances.h"
+#include "Dataset/Distances.h"
 #include <utility>
 #include <cstdlib>
 #include <cmath>
@@ -118,4 +118,16 @@ std::unique_ptr<math::Distance> math::DistanceFactory::createDistance(DistanceTy
 	}
 
 	return nullptr;
+}
+
+std::string math::DistanceFactory::distanceName(DistanceType distanceType) {
+	switch (distanceType) {
+		case DistanceType::Euclidean: return "AUC";
+		case DistanceType::Manhattan: return "MAN";
+		case DistanceType::Chebyshev: return "CHB";
+		case DistanceType::Canberra: return "CAN";
+		case DistanceType::Minkowski: return "MIN";
+	}
+	
+	return "";
 }

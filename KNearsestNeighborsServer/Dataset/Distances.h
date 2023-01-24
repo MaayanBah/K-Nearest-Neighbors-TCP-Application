@@ -88,6 +88,7 @@ namespace math {
 		};
 
 		static std::unique_ptr<Distance> createDistance(DistanceType distanceType);
+		static std::string distanceName(DistanceType distanceType);
 	};
 }
 
