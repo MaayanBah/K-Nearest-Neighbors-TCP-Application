@@ -6,21 +6,14 @@
 
 namespace app {
     class DownloadCommand : public Command {
-    private:
-        // Members
-        AppData& appData;
-
     public:
         // C'tor
-        DownloadCommand(std::string description,
-                        DefaultIO& io,
-                        AppData& appData) :
-            Command(std::move(description), io),
-            appData(appData) {
+        DownloadCommand(DefaultIO& io) :
+            Command("download results", io) {
         }
 
         // Implemented Abstract Methods
-        void execute() override;
+        void execute() override { }
     };
 }
 

@@ -8,7 +8,9 @@
 #include "ClientApp/UploadCommand.h"
 #include "ClientApp/AlgorithmSettingsCommand.h"
 #include "ClientApp/ClassifyDataCommand.h"
+#include "ClientApp/DisplayCommand.h"
 #include "ClientApp/DownloadCommand.h"
+#include "ClientApp/OtherSocketCopyAppdataCommand.h"
 #include "ClientApp/ClientThread.h"
 #include "ClientApp/AppData.h"
 #include "Utils/ParseMethods.h"
@@ -18,14 +20,12 @@
 using namespace std;
 using namespace app;
 
-ClientThread::ClientThread() {
-    // supportedCommands.push_back(...);
-}
+std::map<ClientThread::ClientData, AppData> ClientThread::clientsAppdata;
 
 void ClientThread::sendMenu(const network::ClientSocket& client,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
     string menu;
-	for (int index = 0; index < supportedCommands.size(); index++) {
+	for (int index = 0; index < supportedCommands.size() - 1; index++) {
         menu += to_string(index + 1) + ". " + supportedCommands[index]->description() + "\n";
     }
 
@@ -35,15 +35,18 @@ void ClientThread::sendMenu(const network::ClientSocket& client,
 }
 
 void ClientThread::operator()(network::ClientSocket client) {
-    AppData appData;
+    AppData& appData = clientsAppdata[ClientData(client)];
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands;
     supportedCommands.push_back(unique_ptr<UploadCommand>(new UploadCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<AlgorithmSettingsCommand>(new AlgorithmSettingsCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<ClassifyDataCommand>(new ClassifyDataCommand(socketIO, appData)));
-    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("display results", socketIO, appData)));
-    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("download results", socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DisplayCommand>(new DisplayCommand(socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand(socketIO)));
+
+    // Internal Command - not to be sent in the menu (hence the 'size -1' in the sendMenu method)
+    supportedCommands.push_back(unique_ptr<OtherSocketCopyAppdataCommand>(new OtherSocketCopyAppdataCommand(client, appData)));
 
     string response;
 
@@ -66,4 +69,5 @@ void ClientThread::operator()(network::ClientSocket client) {
             }
         } while (true);
     } catch (runtime_error exception) { }
+    clientsAppdata.erase(ClientData(client));
 }

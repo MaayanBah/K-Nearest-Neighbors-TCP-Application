@@ -1,11 +1,11 @@
 #include <vector>
 
-#include "ClientApp/DownloadCommand.h"
+#include "ClientApp/DisplayCommand.h"
 
 using namespace app;
 using namespace std;
 
-void DownloadCommand::execute() {
+void DisplayCommand::execute() {
     if (appData.dataset.size() == 0 || appData.unclassifiedData.empty()) {
         io.write("please upload data\n");
         return;

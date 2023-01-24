@@ -9,14 +9,17 @@ namespace network
 	{
 	private:
 		// Data Members
-		int _socketID;
+		int socketID;
+		unsigned int ip;
+		unsigned short port;
 		
 	public:
 		// C'tors
 		ClientSocket() : 
-			_socketID(-1) { }
-		ClientSocket(int socketID) : 
-			_socketID(socketID) { }
+			socketID(-1),
+			ip(0),
+			port(0) { }
+		ClientSocket(int socketID);
 		ClientSocket(const ClientSocket&) = delete;
 		ClientSocket(ClientSocket&&);
 		
@@ -28,6 +31,8 @@ namespace network
 		ClientSocket& operator=(ClientSocket&& other);
 		
 		// Methods
+		inline unsigned int getIP() const { return ip; }
+		inline unsigned short getPort() const { return port; }
 		void send(const std::string& dataToSend) const;
 		std::string receive(int maxBufferSize = 4096) const;
 	};
