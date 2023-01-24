@@ -43,6 +43,10 @@ string ClientSocket::receive(int maxBufferSize) const {
 	if (bytesReceived == -1) {
 		throw runtime_error(std::string("Error receiving on client socket! Error code: ") + std::to_string(errno));
 	}
+
+	if (bytesReceived == 0) {
+		throw runtime_error(std::string("Client disconnected"));
+	}
 	
 	return string(buf, bytesReceived);
 }

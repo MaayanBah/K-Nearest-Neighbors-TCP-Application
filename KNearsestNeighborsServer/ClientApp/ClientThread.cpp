@@ -47,32 +47,23 @@ void ClientThread::operator()(network::ClientSocket client) {
 
     string response;
 
-    do {
-        try {
+    try {
+        do {
             sendMenu(client, supportedCommands);
             response = client.receive();
 
-            if (response.empty()) {
-                break;
-            }
-
             int userChoice;
-            if (!ParseMethods::parse(response, userChoice)) {
-                client.send("invalid input\n");
-                continue;
-            }
-            
-            if (userChoice == EXIT_OPTION) {
-                break;
-            }
+            if (ParseMethods::parse(response, userChoice)) {
+                if (userChoice == EXIT_OPTION) {
+                    break;
+                }
 
-            if (userChoice < 1 || userChoice > supportedCommands.size()) {
-                break;
-            }
+                if (userChoice < 1 || userChoice > supportedCommands.size()) {
+                    break;
+                }
 
-            supportedCommands[userChoice - 1]->execute();
-        } catch (runtime_error exception) {
-            cout << exception.what() << "\n";
-        }
-    } while (!response.empty());
+                supportedCommands[userChoice - 1]->execute();
+            }
+        } while (true);
+    } catch (runtime_error exception) { }
 }
