@@ -1,4 +1,7 @@
-#include "ClientSocket.h"
+#ifndef __CLIENT_SERVER_H
+#define __CLIENT_SERVER_H
+
+#include "Network/ClientSocket.h"
 
 namespace network
 {
@@ -26,3 +29,5 @@ namespace network
 		ClientSocket AcceptNewClient();
 	};
 }
+
+#endif

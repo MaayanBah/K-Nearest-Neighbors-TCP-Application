@@ -1,9 +1,10 @@
-#include "LabeledDataSet.h"
+#include "Dataset/LabeledDataSet.h"
 #include <iostream>
 #include <fstream>
 #include <sstream> 
 #include <algorithm>
 #include <unordered_map>
+#include <utility>
 
 using namespace std;
 using namespace math;
@@ -14,69 +15,9 @@ using namespace math;
 * Output:
 *   This builds the labeled dataset by the file passed.
 */
-data::LabeledDataSet::LabeledDataSet(const string& classifiedFilePath) {
-    ifstream classifiedFile(classifiedFilePath);
-
-    if (!classifiedFile.is_open()) {
-        throw runtime_error("Failed opening classified file!");
-    }
-
-    string line;
-    
-    // Go over the file line by line
-    while (getline(classifiedFile, line)) {
-        LabeledData currentLabeledData(line);
-
-        // If the parsed labeled data does not match the previous element of the dataset in feature length
-        if (!dataSet.empty() && dataSet[dataSet.size() - 1].features.size() != currentLabeledData.features.size()) {
-            throw runtime_error("The size of the features isn't consistent!");
-        }
-
-        dataSet.push_back(std::move(currentLabeledData));
-    }
-
-    classifiedFile.close();
+data::LabeledDataSet::LabeledDataSet(std::vector<LabeledData> dataSet) : 
+    dataSet(std::move(dataSet)) {
 }
-
-/*
-* Input:
-*   line = The line that represents the labeled data
-* Output:
-*   This builds the LabeledData by the line passed.
-*/
-data::LabeledDataSet::LabeledData::LabeledData(const std::string& line) {
-    stringstream stream(line);
-
-    // Go over the line comma after comma, until we reach the end, or we've failed, or we've parsed the label
-    while (!stream.eof() && !stream.fail() && label.empty()) {
-        string currentString;
-        getline(stream, currentString, ',');
-
-        stringstream doubleStream(currentString);
-        double currentNumber;
-        doubleStream >> currentNumber;
-        
-        // If the current element is not a double, it's the label.
-        if (doubleStream.fail()) {
-            label = currentString;
-        } else {
-            features.push_back(currentNumber);
-        }
-    }
-
-    if (!stream.eof() || stream.fail()) {
-        throw runtime_error("Failed parsing the line!");
-    }
-
-    if (features.empty()) {
-        throw runtime_error("The line parsed contained no features!");
-    }
-
-    if (label.empty()) {
-        throw runtime_error("The line parsed contained no label!");
-    }
-}
-
 
 /*
 * Input:

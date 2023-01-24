@@ -4,7 +4,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <stdexcept>
-#include "Server.h"
+#include "Network/Server.h"
 
 using namespace std;
 using namespace network;
