@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <vector>
 #include <sstream>
 #include <netdb.h>
 #include <unistd.h>
@@ -13,6 +14,7 @@
 #include <fstream>
 #include <thread>
 #include <pthread.h>
+
 using namespace std;
 #define NUM_THREADS 5
 
@@ -62,24 +64,6 @@ bool checkNumber(const string& str) {
    return true;
 }
 
-void printResponseFromServer(const int& sock) {
-	char buf[4096];
-	// Wait for a response from the server
-	memset(buf, 0, sizeof(buf));
-	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
-	if (bytesReceived == -1) {
-		cout << "There was an error getting response from server" << endl;
-		return;
-	}
-	
-	if (bytesReceived == 0) {
-		cout << "Server unavailable, the socket disconnected.\n";
-		return;
-	}
-	
-	cout << string(buf, bytesReceived) << endl;
-}
-
 string returnResponseFromServer(const int& sock) {
 	char buf[4096];
 	// Wait for a response from the server
@@ -98,27 +82,20 @@ string returnResponseFromServer(const int& sock) {
 }
 
 void sendToServer(const int& sock, const string& inputFromUserToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
+	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size(), 0) == -1) {
 		cout << "Couldn't send to server! Whoops!" << endl;
 		return;
 	}
 }
 
-void sendToServer(const int& sock, const string& inputFromUserToSend, const int& bytesToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), bytesToSend + 1, 0) == -1) {
-		cout << "Couldn't send to server! Whoops!" << endl;
-		return;
-	}
-}
-
-void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
+bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
 	const int FILE_CHUNK_SIZE = 4095; 
 
 	// Check if file exists
 	ifstream file(localTrainFile, ios::binary);
 	if(!file) {
 		cout<<"invalid input" << endl;
-		return;
+		return false;
 	}
 
 	// Get file size
@@ -127,15 +104,17 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 	file.close();
 
 	// Get the file
-	char* fileBuffer = new char[fileSize];
+	vector<char> fileBuffer(fileSize);
 	file.open(localTrainFile, ios::binary);
 	file.seekg (0, ios::beg);
-	file.read (fileBuffer, fileSize);
+	file.read (fileBuffer.data(), fileSize);
 	file.close();
 
 	// Send file in chunks
 	unsigned int bytesSent = 0;
 	int bytesToSend = 0;
+	string response;
+	
 	while(bytesSent < fileSize) {
 		if(fileSize - bytesSent >= FILE_CHUNK_SIZE) {
 			bytesToSend = FILE_CHUNK_SIZE;
@@ -143,51 +122,70 @@ void sendFileToServerByChuncks(const int& sock, string localTrainFile) {
 			bytesToSend = fileSize - bytesSent;
 		}
 		string initial = "0";
-		string buf = initial.append(fileBuffer + bytesSent);
+		string buf = initial.append(string(fileBuffer.data() + bytesSent, fileBuffer.data() + bytesSent + bytesToSend));
 		// Send the file in chunks (with initial "0") to server and wait for a response of the server
-		sendToServer(sock, buf, bytesToSend+1);
-		//cout << buf;
-		//bytesSent += bytesToSend;
+		sendToServer(sock, buf);
+		bytesSent += bytesToSend;
 
+		response = returnResponseFromServer(sock);
+		
 		// if the server confirm to get the chunk
-		if (returnResponseFromServer(sock) == "1") {
+		if (response[0] == '1') {
 			bytesSent += bytesToSend;
-		} else if (returnResponseFromServer(sock) == "2") {
+		} else if (response[0] == '2') {
 			cout << "There was an error with the content of the file" << endl;
-			return;
+			return false;
+		}
+		else
+		{
+			cout << "Server responded with invalid header" << endl;
+			return false;
 		}
 	}
-	delete [] fileBuffer;
 	
 	// Let the server know we finished the sending
 	sendToServer(sock, "1");
+	
+	response = returnResponseFromServer(sock);
+	if (response[0] == '2') {
+		cout << "There was an error with the content of the file" << endl;
+		return false;
+	}
+	
 	// should be "upload complete."
-	printResponseFromServer(sock);
+	cout << response;
+	
+	return true;
 }
 
 void uploadUnclassifiedCSV(const int& sock) {
 	string localTrainFile;
 	cout << "Please upload your local train CSV file." << endl;
 	getline(cin, localTrainFile); 
-	sendFileToServerByChuncks(sock, localTrainFile);
+	if (!sendFileToServerByChunks(sock, localTrainFile)) {
+		cout << returnResponseFromServer(sock);
+		return;
+	}
 
 	string localTestFile;
 	cout << "Please upload your local test CSV file." << endl;
 	getline(cin, localTestFile);
-	sendFileToServerByChuncks(sock, localTestFile);
+	sendFileToServerByChunks(sock, localTestFile);
+	cout << returnResponseFromServer(sock);
 }
 
 
 void algorithemSettings(const int& sock) {
-	// print the initial k and metric (Maayan's implement) - initialized to 5 and EUC
-	printResponseFromServer(sock); 	// to uncomment it when Maayan finish implement
+	cout << returnResponseFromServer(sock);
 	string userInput;
-	// get k and metric from user
 	getline(cin, userInput);
 	sendToServer(sock, userInput);
-	// Maayan implement - if its valid - response back the menu
-	// else 'invalid value for metric' or/and 'invalid value for K'
-	printResponseFromServer(sock);
+	string response = returnResponseFromServer(sock);
+	
+	cout << response;
+	if (response.find("Exit") == string::npos) {
+		cout << returnResponseFromServer(sock);
+	}
 }
 
 void classifyData(const int& sock) {
@@ -195,7 +193,12 @@ void classifyData(const int& sock) {
 	// Maayan implement : the server runs the CSV files from option 1
 	// and server response back 'classifying data complete' or 'please upload data'
 	// then get back to the menu
-	printResponseFromServer(sock);
+	string response = returnResponseFromServer(sock);
+	
+	cout << response;
+	if (response.find("Exit") == string::npos) {
+		cout << returnResponseFromServer(sock);
+	}
 }
 
 void displayResults(const int& sock) {
@@ -207,16 +210,16 @@ void displayResults(const int& sock) {
 			sendToServer(sock, "1");
 			buf.erase(buf.begin());
 			cout << buf;
-		}
-		// if content is invalid - then send an error and print a message
-		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
-			sendToServer(sock, "2");
-			cout << "There was a problem receiving the contect" << endl;
-			break;
-		}
-		// if there is no more content to read, server send 1, and client exits
-		if (buf == "1") {
-			break;
+		} else {
+			if (!buf.empty() && buf[0] == '1') {
+				sendToServer(sock, "1");
+			} else {
+				sendToServer(sock, "2");
+				cout << "There was a problem receiving the content" << endl;
+			}
+			
+			cout << returnResponseFromServer(sock);
+			return;
 		}
 	} while(true);
 }
@@ -326,16 +329,14 @@ int main(int argc, char* argv[]) {
     string userInput;
 	bool shouldExit = false;
 	
+	cout << returnResponseFromServer(sock);
+	
     do {
-		// uncomment it when Maayan implement the menu
-		//responseFromServer(sock);
-		cout << "a manu" << endl;
-		
 		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
 
 		// If the client didn't enter a number
-		if (checkNumber(userInput) == false) {
+		if (!checkNumber(userInput)) {
 			cout << "An invalid option" << endl;
 			continue;
 		}
@@ -362,7 +363,7 @@ int main(int argc, char* argv[]) {
 				shouldExit = true;
 				break;
 			default:
-				cout << "An invalid option" << endl;
+				cout << "invalid input" << endl;
 			}
     } while(!shouldExit);
 
