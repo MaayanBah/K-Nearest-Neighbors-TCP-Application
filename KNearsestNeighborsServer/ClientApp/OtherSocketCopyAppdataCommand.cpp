@@ -8,14 +8,22 @@ using namespace app;
 using namespace std;
 
 void OtherSocketCopyAppdataCommand::execute() {
-    client.send(string(1, '1'));
+    client.send("1");
     string response = client.receive();
     int portReceived;
 
     if (!ParseMethods::parse(response, portReceived)) {
-        client.send(string(1, '2'));
+        client.send("2");
+        return;
+    }
+    
+    ClientThread::ClientData parentClient(client.getIP(), portReceived);
+
+    if (ClientThread::clientsAppdata.find(parentClient) == ClientThread::clientsAppdata.end()) {
+        client.send("2");
         return;
     }
 
-    appData = ClientThread::clientsAppdata.at(ClientThread::ClientData(client.getIP(), portReceived));
+    client.send("1");
+    appData = *ClientThread::clientsAppdata.at(parentClient);
 }

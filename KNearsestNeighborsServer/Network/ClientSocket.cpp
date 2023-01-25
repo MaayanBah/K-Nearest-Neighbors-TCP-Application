@@ -34,6 +34,8 @@ ClientSocket::ClientSocket(ClientSocket&& other) {
 
 ClientSocket& ClientSocket::operator=(ClientSocket&& other) {
 	socketID = other.socketID;
+	port = other.port;
+	ip = other.ip;
 	other.socketID = -1;
 	
 	return *this;

@@ -3,17 +3,28 @@
 
 #include "ClientApp/Command.h"
 #include "ClientApp/AppData.h"
+#include "Network/ClientSocket.h"
 
 namespace app {
     class DownloadCommand : public Command {
+    private:
+        // Members
+        AppData& appData;
+        const network::ClientSocket& client;
+        SocketIO io;
+
     public:
         // C'tor
-        DownloadCommand(DefaultIO& io) :
-            Command("download results", io) {
+        DownloadCommand(const network::ClientSocket& client, 
+                        AppData& appData) :
+            Command("download results", io),
+            appData(appData),
+            client(client),
+            io(client) {
         }
 
         // Implemented Abstract Methods
-        void execute() override { }
+        void execute() override;
     };
 }
 

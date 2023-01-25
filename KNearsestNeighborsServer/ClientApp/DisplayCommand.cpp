@@ -22,13 +22,13 @@ void DisplayCommand::execute() {
          currentIndex < appData.classificationResult.size();
          currentIndex += sizeToSend) {
         sizeToSend = min<int>(4096, appData.classificationResult.size() - currentIndex);
-        io.write(string(1, '0') + appData.classificationResult.substr(currentIndex, sizeToSend));
+        io.write(string("0") + appData.classificationResult.substr(currentIndex, sizeToSend));
 
         if (io.read()[0] != '1') {
             break;
         }
     }
 
-    io.write(string(1, '1'));
+    io.write(string("1"));
     io.read();
 }

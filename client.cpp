@@ -110,14 +110,7 @@ string returnResponseFromServer(const int& sock) {
 }
 
 void sendToServer(const int& sock, const string& inputFromUserToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
-		cout << "Couldn't send to server! Whoops!" << endl;
-		exit;
-	}
-}
-
-void sendToServer(const int& sock, const string& inputFromUserToSend, const int& bytesToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), bytesToSend + 1, 0) == -1) {
+	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size(), 0) == -1) {
 		cout << "Couldn't send to server! Whoops!" << endl;
 		exit;
 	}
@@ -214,6 +207,11 @@ void algorithemSettings(const int& sock) {
 	cout << returnResponseFromServer(sock);
 	string userInput;
 	getline(cin, userInput);
+	
+	if (userInput.empty()) {
+		userInput = string(1, '\0');
+	}
+	
 	sendToServer(sock, userInput);
 	string response = returnResponseFromServer(sock);
 	
@@ -237,7 +235,6 @@ void classifyData(const int& sock) {
 }
 
 void displayResults(const int& sock) {
-	// get the contect from the server (till 4096 bytes and including initial "0" for each chunk)
 	do {
 		string buf = returnResponseFromServer(sock);
 		// if content is alright - then delete the initial "0" of chunk and print it
@@ -245,40 +242,40 @@ void displayResults(const int& sock) {
 			sendToServer(sock, "1");
 			buf.erase(buf.begin());
 			cout << buf;
-		}
-		// if content is invalid - then send an error and print a message
-		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
-			sendToServer(sock, "2");
-			cout << "There was a problem receiving the contect" << endl;
-			exit;
-		}
-		// if there is no more content to read, server send 1, and client exits
-		if (buf == "1") {
-			break;
+		} else {
+			if (!buf.empty() && buf[0] == '1') {
+				sendToServer(sock, "1");
+			} else {
+				sendToServer(sock, "2");
+				cout << "There was a problem receiving the content" << endl;
+				exit;
+			}
+			
+			cout << returnResponseFromServer(sock);
+			return;
 		}
 	} while(true);
 }
 
-void getTheContectToFile(const int& sock, const string& filePath) {
-	// get the contect from the server (till 4096 bytes and including initial "0" for each chunk)
+void getTheContentToFile(const int& sock, const string& filePath) {
+	std::ofstream outfile (filePath);
+	
 	do {
 		string buf = returnResponseFromServer(sock);
 		// if content is alright - then delete the initial "0" of chunk and print it
 		if (buf.length() > 0 && buf[0] == '0') {
 			sendToServer(sock, "1");
 			buf.erase(buf.begin());
-			std::ofstream outfile (filePath);
-			outfile << buf << std::endl;
-		}
-		// if content is invalid - then send an error and print a message
-		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
-			sendToServer(sock, "2");
-			cout << "There was a problem receiving the contect" << endl;
-			exit;
-		}
-		// if there is no more content to read, server send 1, and client exits
-		if (buf == "1") {
-			break;
+			outfile << buf;
+		} else {
+			if (!buf.empty() && buf[0] == '1') {
+				sendToServer(sock, "1");
+			} else {
+				sendToServer(sock, "2");
+				cout << "There was a problem receiving the content" << endl;
+				exit;
+			}
+			return;
 		}
 	} while(true);
 }
@@ -292,38 +289,68 @@ void downloadResults(const string& filePath, const string& ipAddress, int port, 
 	// if the user enters 5 again, and a path to a file, we open one more thread
 	// so we have parallel threads, working both together
 	
-	//Print Thread ID and path to file
-	std::cout << "From Thread ID : "<<std::this_thread::get_id() << "\n"; // to commit it 
-	cout << "the path is: " << filePath << endl; // to commit it
-
 	// create a new socket with the server
 	// and dont print its menu default response
 	int sock = createSocket(ipAddress, port);
-	cout << "sock number inside function: " << sock << endl; // to commit
+	
 	// getting menu from the server, and doesn't print it
-	string menu = returnResponseFromServer(sock);
+	returnResponseFromServer(sock);
+	
 	// send a special command to server to open a communication
 	sendToServer(sock, "6");
-	if (returnResponseFromServer(sock) == "1") {
-		sendToServer(sock, to_string(sockFatherPort));
-		getTheContectToFile(sock, filePath);
-
-	}
-
 	
-
-
+	if (returnResponseFromServer(sock)[0] != '1') {
+		cout << "There was a problem receiving the content" << endl;
+		exit;
+	} else {
+		sendToServer(sock, to_string(sockFatherPort));
+		string response = returnResponseFromServer(sock);
+		if (response[0] != '1') {
+			cout << "There was a problem receiving the content" << endl;
+			exit;
+		}
+		
+		if (response.find("Exit") != string::npos) {
+			returnResponseFromServer(sock);
+		}
+		
+		sendToServer(sock, "4");
+		
+		getTheContentToFile(sock, filePath);
+	}
+	
+    close(sock);
 }
 
-
-bool checkIfFileExists(const string& pathToFile) {
-	ifstream file(pathToFile, ios::binary);
-	if(!file) {
-		return false;
-	} 
-	return true;
+void sendSockPortAndDownload(const int& sock, 
+							 const string& serverIP,
+							 int serverPort,
+							 std::vector<std::thread>& vecOfThreads) {	
+    sockaddr_in hint;
+	socklen_t hint_length = sizeof(hint);
+	
+	getsockname(sock, (struct sockaddr *) &hint, &hint_length);
+	
+	returnResponseFromServer(sock);
+	sendToServer(sock, to_string(hint.sin_port));
+	
+	string response = returnResponseFromServer(sock);
+	if (response[0] != '1') {
+		cout << "Failed to download file from server" << endl;
+		exit;
+	}
+	
+	string pathToFile;
+	getline(cin, pathToFile);
+	
+	cout << returnResponseFromServer(sock);
+	
+	vecOfThreads.push_back(thread(downloadResults, 
+								  pathToFile, 
+								  serverIP, 
+								  serverPort, 
+								  hint.sin_port));
 }
-
 
 int main(int argc, char* argv[]) {
 	argc--;
@@ -351,38 +378,8 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	
-	// create a socket and connection to server
-	//int sock = createSocket(ipAddress, port);
-
  	// Create a socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
-		cout << "Failed to create socket" << endl;
-        exit;
-    }
-	
-    // Create a hint structure for the server we are connecting with
-    sockaddr_in hint;
-    hint.sin_family = AF_INET;
-    hint.sin_port = htons(port);
-	socklen_t hint_length = sizeof(hint);
-
-	
-    if (inet_pton(AF_INET, ipAddress.c_str(), &hint.sin_addr) == 0)
-	{
-		cout << ipAddress << " is not a valid ip address" << endl;
-		exit;
-	}
-
-    // Connect to the server on the socket
-    int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
-    if (connectRes == -1) {
-		cout << "Failed to connect to socket with ip " << ipAddress << " and port " << port << endl;
-        exit;
-    }
-
-	getsockname(sock, (struct sockaddr *) &hint, &hint_length);
-    std::cout << "Port number of main socket: " << ntohs(hint.sin_port) << std::endl;
+    int sock = createSocket(ipAddress, port);
 
     string userInput;
 	std::vector<std::thread> vecOfThreads;
@@ -391,23 +388,17 @@ int main(int argc, char* argv[]) {
 	cout << returnResponseFromServer(sock);
 	
     do {
-		// uncomment it when Maayan implement the menu
-		//responseFromServer(sock);
-		cout << "a manu" << endl; // commit it
-		
-
 		// after the menu, the user enters a number according to the menu options
         getline(cin, userInput);
 
 		// If the client didn't enter a number
 		if (!checkNumber(userInput)) {
-			cout << "An invalid option" << endl;
+			cout << "invalid input" << endl;
 			continue;
 		}
 		
 		// send the server the user choice
 		sendToServer(sock, userInput);
-		string pathToFile;
 
 		switch (stoi(userInput)) {
 			case 1:
@@ -423,20 +414,7 @@ int main(int argc, char* argv[]) {
 				displayResults(sock);
 				break;	
 			case 5:
-				cout << "sock number in switch case: " << sock << endl; // to commit
-				cout << "Please upload a path to file" << endl; //to commit it
-				getline(cin, pathToFile);
-				// Check if file exists
-				if (checkIfFileExists(pathToFile)) {
-					// file exists
-					cout << "file exists!" << endl; // commit it
-					vecOfThreads.push_back(thread(downloadResults, pathToFile, ipAddress, port, ntohs(hint.sin_port)));
-				} else {
-					// file doesn't exists - then create it
-					std::ofstream outfile (pathToFile);
-					//outfile << "my text here!" << std::endl; // to commit it
-					vecOfThreads.push_back(thread(downloadResults, pathToFile, ipAddress, port, ntohs(hint.sin_port)));
-				}
+				sendSockPortAndDownload(sock, ipAddress, port, vecOfThreads);
 				break;
 			case 8:
 				shouldExit = true;

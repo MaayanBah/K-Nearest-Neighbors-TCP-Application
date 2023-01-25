@@ -20,7 +20,7 @@
 using namespace std;
 using namespace app;
 
-std::map<ClientThread::ClientData, AppData> ClientThread::clientsAppdata;
+std::map<ClientThread::ClientData, AppData*> ClientThread::clientsAppdata;
 
 void ClientThread::sendMenu(const network::ClientSocket& client,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
@@ -35,7 +35,7 @@ void ClientThread::sendMenu(const network::ClientSocket& client,
 }
 
 void ClientThread::operator()(network::ClientSocket client) {
-    AppData& appData = clientsAppdata[ClientData(client)];
+    AppData appData;
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands;
@@ -43,7 +43,7 @@ void ClientThread::operator()(network::ClientSocket client) {
     supportedCommands.push_back(unique_ptr<AlgorithmSettingsCommand>(new AlgorithmSettingsCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<ClassifyDataCommand>(new ClassifyDataCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<DisplayCommand>(new DisplayCommand(socketIO, appData)));
-    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand(socketIO)));
+    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand(client, appData)));
 
     // Internal Command - not to be sent in the menu (hence the 'size -1' in the sendMenu method)
     supportedCommands.push_back(unique_ptr<OtherSocketCopyAppdataCommand>(new OtherSocketCopyAppdataCommand(client, appData)));

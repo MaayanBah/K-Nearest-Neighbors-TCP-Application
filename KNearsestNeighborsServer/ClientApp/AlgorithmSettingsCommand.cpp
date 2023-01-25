@@ -16,7 +16,7 @@ void AlgorithmSettingsCommand::execute() {
     
     std::string response = io.read();
 
-    if (response.empty()) {
+    if (response[0] == '\0') {
         return;
     }
 

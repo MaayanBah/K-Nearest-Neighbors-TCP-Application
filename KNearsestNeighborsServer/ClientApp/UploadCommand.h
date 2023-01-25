@@ -9,11 +9,6 @@
 namespace app {
     class UploadCommand : public Command {
     private:
-        // Consts
-        static constexpr char DATA_MARK = '0';
-        static constexpr char FINISHED_MARK = '1';
-        static constexpr char ERROR_MARK = '2';
-
         // Members
         AppData& appData;
 

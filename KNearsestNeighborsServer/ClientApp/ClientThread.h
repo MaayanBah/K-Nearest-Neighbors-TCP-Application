@@ -42,7 +42,7 @@ namespace app
         };
 
         // AppData Mapping
-        static std::map<ClientData, AppData> clientsAppdata;
+        static std::map<ClientData, AppData*> clientsAppdata;
 
         // Thread Method
         void operator()(network::ClientSocket client);
