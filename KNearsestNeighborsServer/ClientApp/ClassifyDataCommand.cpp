@@ -27,4 +27,5 @@ void ClassifyDataCommand::execute() {
     }
 
     appData.classificationResult += "Done.\n";
+    io.write("classifying data complete\n");
 }

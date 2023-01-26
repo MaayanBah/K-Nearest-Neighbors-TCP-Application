@@ -32,6 +32,7 @@ namespace app {
         // Methods
         void write(const std::string& dataToWrite) override {
             client.send(dataToWrite);
+            client.receive(1);
         }
 
         std::string read() override {

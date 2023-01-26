@@ -22,7 +22,7 @@ using namespace app;
 
 std::map<ClientThread::ClientData, AppData*> ClientThread::clientsAppdata;
 
-void ClientThread::sendMenu(const network::ClientSocket& client,
+void ClientThread::sendMenu(DefaultIO& io,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
     string menu;
 	for (int index = 0; index < supportedCommands.size() - 1; index++) {
@@ -31,7 +31,7 @@ void ClientThread::sendMenu(const network::ClientSocket& client,
 
     menu += to_string(EXIT_OPTION) + ". Exit\n";
 
-    client.send(menu);
+    io.write(menu);
 }
 
 void ClientThread::operator()(network::ClientSocket client) {
@@ -52,7 +52,7 @@ void ClientThread::operator()(network::ClientSocket client) {
 
     try {
         do {
-            sendMenu(client, supportedCommands);
+            sendMenu(socketIO, supportedCommands);
             response = client.receive();
 
             int userChoice;

@@ -19,7 +19,7 @@ namespace app
         static const int EXIT_OPTION = 8;
 
         // Methods
-        void sendMenu(const network::ClientSocket& client,
+        void sendMenu(DefaultIO& io,
                       const std::vector<std::unique_ptr<Command>>& supportedCommands);
 
     public:
