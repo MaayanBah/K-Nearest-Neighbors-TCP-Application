@@ -25,8 +25,8 @@ std::map<ClientThread::ClientData, AppData*> ClientThread::clientsAppdata;
 void ClientThread::sendMenu(DefaultIO& io,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
     string menu;
-	for (int index = 0; index < supportedCommands.size() - 1; index++) {
-        menu += to_string(index + 1) + ". " + supportedCommands[index]->description() + "\n";
+	for (int index = 1; index < supportedCommands.size(); index++) {
+        menu += to_string(index) + ". " + supportedCommands[index]->description() + "\n";
     }
 
     menu += to_string(EXIT_OPTION) + ". Exit\n";
@@ -39,14 +39,15 @@ void ClientThread::operator()(network::ClientSocket client) {
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands;
+
+    // Internal Command - not to be sent in the menu (hence the 'index = 1' in the sendMenu method)
+    supportedCommands.push_back(unique_ptr<OtherSocketCopyAppdataCommand>(new OtherSocketCopyAppdataCommand(client, appData)));
+
     supportedCommands.push_back(unique_ptr<UploadCommand>(new UploadCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<AlgorithmSettingsCommand>(new AlgorithmSettingsCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<ClassifyDataCommand>(new ClassifyDataCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<DisplayCommand>(new DisplayCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand(client, appData)));
-
-    // Internal Command - not to be sent in the menu (hence the 'size -1' in the sendMenu method)
-    supportedCommands.push_back(unique_ptr<OtherSocketCopyAppdataCommand>(new OtherSocketCopyAppdataCommand(client, appData)));
 
     string response;
 
@@ -65,7 +66,7 @@ void ClientThread::operator()(network::ClientSocket client) {
                     break;
                 }
 
-                supportedCommands[userChoice - 1]->execute();
+                supportedCommands[userChoice]->execute();
             }
         } while (true);
     } catch (runtime_error exception) { }

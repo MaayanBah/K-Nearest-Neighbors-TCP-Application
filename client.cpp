@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstring>
 #include <string>
-#include <vector>
 #include <sstream>
 #include <netdb.h>
 #include <unistd.h>
@@ -14,6 +13,8 @@
 #include <fstream>
 #include <thread>
 #include <vector>
+#include <list>
+#include <stdexcept>
 
 using namespace std;
 
@@ -21,8 +22,7 @@ int createSocket(const string& ipAddress, const int& port) {
  	// Create a socket
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
-		cout << "Failed to create socket" << endl;
-        exit;
+		throw std::runtime_error("Failed to create socket");
     }
 	
     // Create a hint structure for the server we are connecting with
@@ -32,15 +32,13 @@ int createSocket(const string& ipAddress, const int& port) {
 	
     if (inet_pton(AF_INET, ipAddress.c_str(), &hint.sin_addr) == 0)
 	{
-		cout << ipAddress << " is not a valid ip address" << endl;
-		exit;
+		throw std::runtime_error(ipAddress + " is not a valid ip address");
 	}
 
     // Connect to the server on the socket
     int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
     if (connectRes == -1) {
-		cout << "Failed to connect to socket with ip " << ipAddress << " and port " << port << endl;
-        exit;
+		throw std::runtime_error("Failed to connect to socket with ip " + ipAddress + " and port " + to_string(port));
     }
 
 	return sock;
@@ -82,20 +80,9 @@ bool validateClientInput(const string& clientData)
 	return !stream.fail();
 }
 
-//check if number or string
-bool checkNumber(const string& str) {
-   for (int i = 0; i < str.length(); i++) {
-		if (isdigit(str[i]) == false) {
-			return false;
-		}
-   }
-   return true;
-}
-
 void sendToServer(const int& sock, const string& inputFromUserToSend) {
 	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size(), 0) == -1) {
-		cout << "Couldn't send to server! Whoops!" << endl;
-		exit;
+		throw std::runtime_error("Couldn't send to server!");
 	}
 }
 
@@ -105,13 +92,11 @@ string returnResponseFromServer(const int& sock) {
 	memset(buf, 0, sizeof(buf));
 	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
 	if (bytesReceived == -1) {
-		cout << "There was an error getting response from server" << endl;
-		exit;
+		throw std::runtime_error("There was an error getting response from server");
 	}
 	
 	if (bytesReceived == 0) {
-		cout << "Server unavailable, the socket disconnected.\n";
-		exit;
+		throw std::runtime_error("Server unavailable, the socket disconnected");
 	}
 	
 	// The server expects a response for every time it sends data.
@@ -122,12 +107,14 @@ string returnResponseFromServer(const int& sock) {
 }
 
 bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
-	const int FILE_CHUNK_SIZE = 4095; 
+	const int FILE_CHUNK_SIZE = 16383; 
 
 	// Check if file exists
 	ifstream file(localTrainFile, ios::binary);
 	if(!file) {
-		cout<<"invalid input" << endl;
+		cout << "invalid input" << endl;
+		sendToServer(sock, "2");
+		returnResponseFromServer(sock);
 		return false;
 	}
 
@@ -158,15 +145,14 @@ bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
 		string buf = initial.append(string(fileBuffer.data() + bytesSent, fileBuffer.data() + bytesSent + bytesToSend));
 		// Send the file in chunks (with initial "0") to server and wait for a response of the server
 		sendToServer(sock, buf);
-		bytesSent += bytesToSend;
-
+		
 		response = returnResponseFromServer(sock);
 		
 		// if the server confirm to get the chunk
 		if (response[0] == '1') {
 			bytesSent += bytesToSend;
 		} else if (response[0] == '2') {
-			cout << "There was an error with the content of the file" << endl;
+			cout << "invalid input" << endl;
 			return false;
 		}
 		else
@@ -181,7 +167,7 @@ bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
 	
 	response = returnResponseFromServer(sock);
 	if (response[0] == '2') {
-		cout << "There was an error with the content of the file" << endl;
+		cout << "invalid input" << endl;
 		return false;
 	}
 	
@@ -202,6 +188,7 @@ void uploadUnclassifiedCSV(const int& sock) {
 	string localTestFile;
 	cout << "Please upload your local test CSV file." << endl;
 	getline(cin, localTestFile);
+	
 	sendFileToServerByChunks(sock, localTestFile);
 }
 
@@ -216,6 +203,10 @@ void algorithemSettings(const int& sock) {
 	}
 	
 	sendToServer(sock, userInput);
+	string response = returnResponseFromServer(sock);
+	if (response[0] != '1') {
+		cout << response;
+	}
 }
 
 void classifyData(const int& sock) {
@@ -234,9 +225,14 @@ void displayResults(const int& sock) {
 			if (!buf.empty() && buf[0] == '1') {
 				sendToServer(sock, "1");
 			} else {
-				sendToServer(sock, "2");
-				cout << "There was a problem receiving the content" << endl;
-				exit;
+				if (buf[0] == '2') {
+					cout << "There was a problem receiving the content" << endl;					
+					sendToServer(sock, "2");
+				} else {
+					cout << buf;
+				}
+				
+				return;
 			}
 			
 			cout << returnResponseFromServer(sock);
@@ -261,7 +257,6 @@ void getTheContentToFile(const int& sock, const string& filePath) {
 			} else {
 				sendToServer(sock, "2");
 				cout << "There was a problem receiving the content" << endl;
-				exit;
 			}
 			return;
 		}
@@ -279,30 +274,39 @@ void downloadResults(const string& filePath, const string& ipAddress, int port, 
 	
 	// create a new socket with the server
 	// and dont print its menu default response
-	int sock = createSocket(ipAddress, port);
+	int sock;
+	try {
+		sock = createSocket(ipAddress, port);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+		return;
+	}
 	
-	// getting menu from the server, and doesn't print it
-	returnResponseFromServer(sock);
-	
-	// send a special command to server to open a communication
-	sendToServer(sock, "6");
-	
-	if (returnResponseFromServer(sock)[0] != '1') {
-		cout << "There was a problem receiving the content" << endl;
-		exit;
-	} else {
-		sendToServer(sock, to_string(sockFatherPort));
-		string response = returnResponseFromServer(sock);
-		if (response[0] != '1') {
-			cout << "There was a problem receiving the content" << endl;
-			exit;
-		}
-		
+	try {
+		// getting menu from the server, and doesn't print it
 		returnResponseFromServer(sock);
 		
-		sendToServer(sock, "4");
+		// send a special command to server to open a communication
+		sendToServer(sock, "0");
 		
-		getTheContentToFile(sock, filePath);
+		if (returnResponseFromServer(sock)[0] != '1') {
+			cout << "There was a problem receiving the content" << endl;
+		} else {
+			sendToServer(sock, to_string(sockFatherPort));
+			string response = returnResponseFromServer(sock);
+			
+			if (response[0] != '1') {
+				cout << "There was a problem receiving the content" << endl;
+			} else {
+				returnResponseFromServer(sock);
+				
+				sendToServer(sock, "4");
+				
+				getTheContentToFile(sock, filePath);	
+			}
+		}
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
 	}
 	
     close(sock);
@@ -311,31 +315,43 @@ void downloadResults(const string& filePath, const string& ipAddress, int port, 
 void sendSockPortAndDownload(const int& sock, 
 							 const string& serverIP,
 							 int serverPort,
-							 std::vector<std::thread>& vecOfThreads) {	
+							 std::list<std::thread>& vecOfThreads) {	
     sockaddr_in hint;
 	socklen_t hint_length = sizeof(hint);
 	
 	getsockname(sock, (struct sockaddr *) &hint, &hint_length);
+	string response = returnResponseFromServer(sock);
 	
-	returnResponseFromServer(sock);
+	if (response[0] != '1') {
+		cout << response;
+		return;
+	}
+	
 	sendToServer(sock, to_string(hint.sin_port));
 	
-	string response = returnResponseFromServer(sock);
+	response = returnResponseFromServer(sock);
 	if (response[0] != '1') {
 		cout << "Failed to download file from server" << endl;
-		exit;
+		return;
 	}
 	
 	string pathToFile;
 	getline(cin, pathToFile);
 	
-	cout << returnResponseFromServer(sock);
+	sendToServer(sock, "1");
 	
 	vecOfThreads.push_back(thread(downloadResults, 
 								  pathToFile, 
 								  serverIP, 
 								  serverPort, 
 								  hint.sin_port));
+}
+
+bool parseInteger(const string& integerString, int& parsedInteger) {
+    stringstream stream(integerString);
+    stream >> parsedInteger;
+
+    return !stream.fail();
 }
 
 int main(int argc, char* argv[]) {
@@ -365,50 +381,59 @@ int main(int argc, char* argv[]) {
 	}
 	
  	// Create a socket
-    int sock = createSocket(ipAddress, port);
-
-    string userInput;
-	std::vector<std::thread> vecOfThreads;
-	bool shouldExit = false;
+	int sock;
+	try {
+		sock = createSocket(ipAddress, port);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+	}
 	
-    do {
-		cout << returnResponseFromServer(sock);
-		
-		// after the menu, the user enters a number according to the menu options
-        getline(cin, userInput);
+	try {		
+		string userInput;
+		std::list<std::thread> vecOfThreads;
+		bool shouldExit = false;
 
-		// If the client didn't enter a number
-		if (!checkNumber(userInput)) {
-			cout << "invalid input" << endl;
-			continue;
-		}
-		
-		// send the server the user choice
-		sendToServer(sock, userInput);
+		do {
+			cout << returnResponseFromServer(sock);
+			
+			// after the menu, the user enters a number according to the menu options
+			getline(cin, userInput);
+			
+			int choice;
 
-		switch (stoi(userInput)) {
-			case 1:
-				uploadUnclassifiedCSV(sock);
-				break;
-			case 2:
-				algorithemSettings(sock);
-				break;
-			case 3:
-				classifyData(sock);
-				break;
-			case 4:
-				displayResults(sock);
-				break;	
-			case 5:
-				sendSockPortAndDownload(sock, ipAddress, port, vecOfThreads);
-				break;
-			case 8:
-				shouldExit = true;
-				break;
-			default:
+			// If the client didn't enter a number
+			while (!parseInteger(userInput, choice) || (choice > 5 && choice != 8) || choice < 1) {
 				cout << "invalid input" << endl;
+				getline(cin, userInput);
 			}
-    } while(!shouldExit);
+			
+			// send the server the user choice
+			sendToServer(sock, userInput);
+
+			switch (choice) {
+				case 1:
+					uploadUnclassifiedCSV(sock);
+					break;
+				case 2:
+					algorithemSettings(sock);
+					break;
+				case 3:
+					classifyData(sock);
+					break;
+				case 4:
+					displayResults(sock);
+					break;	
+				case 5:
+					sendSockPortAndDownload(sock, ipAddress, port, vecOfThreads);
+					break;
+				case 8:
+					shouldExit = true;
+					break;
+			}
+		} while(!shouldExit);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+	}
 
     close(sock);
     return 0;

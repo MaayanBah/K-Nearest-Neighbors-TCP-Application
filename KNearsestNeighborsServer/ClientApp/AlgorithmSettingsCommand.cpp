@@ -17,6 +17,7 @@ void AlgorithmSettingsCommand::execute() {
     std::string response = io.read();
 
     if (response[0] == '\0') {
+        io.write("1");
         return;
     }
 
@@ -33,17 +34,20 @@ void AlgorithmSettingsCommand::execute() {
         return;
     }
 
+    string message;
+
     int newK;
     bool wasKParsed = ParseMethods::parse(kString, newK) && newK >= 1 && (appData.dataset.size() == 0 || newK <= appData.dataset.size());
     if (!wasKParsed) {
-        io.write(badIntegerMessage);
+        message += badIntegerMessage;
     }
 
 	std::string distanceString;
 	stream >> distanceString;
 	
 	if (stream.fail()) {
-        io.write(badDistanceMessage);
+        message += badDistanceMessage;
+        io.write(message);
 		return;
 	}	
 	
@@ -56,12 +60,14 @@ void AlgorithmSettingsCommand::execute() {
     };
 
     if (conversionMap.find(distanceString) == conversionMap.cend()) {
-        io.write(badDistanceMessage);
+        message += badDistanceMessage;
+        io.write(message);
         return;
     }
 
     if (wasKParsed) {
         appData.k = newK;
         appData.distanceMethod = conversionMap.at(distanceString);
+        io.write("1");
     }
 }

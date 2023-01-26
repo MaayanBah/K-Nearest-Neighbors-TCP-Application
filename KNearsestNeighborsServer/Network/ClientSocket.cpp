@@ -49,9 +49,8 @@ void ClientSocket::send(const string& dataToSend) const {
 }
 
 string ClientSocket::receive(int maxBufferSize) const {
-	char buf[4096];
-	memset(buf, 0, 4096);
-	int bytesReceived = recv(socketID, buf, sizeof(buf), 0);
+	char buf[MAX_PACKET_SIZE] = {0};
+	int bytesReceived = recv(socketID, buf, maxBufferSize, 0);
 	
 	if (bytesReceived == -1) {
 		throw runtime_error(std::string("Error receiving on client socket! Error code: ") + std::to_string(errno));

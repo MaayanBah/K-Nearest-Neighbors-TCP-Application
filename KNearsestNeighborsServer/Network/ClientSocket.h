@@ -8,6 +8,9 @@ namespace network
 	class ClientSocket
 	{
 	private:
+		// Consts
+		static const unsigned int MAX_PACKET_SIZE = 16384;
+
 		// Data Members
 		int socketID;
 		unsigned int ip;
@@ -34,7 +37,7 @@ namespace network
 		inline unsigned int getIP() const { return ip; }
 		inline unsigned short getPort() const { return port; }
 		void send(const std::string& dataToSend) const;
-		std::string receive(int maxBufferSize = 4096) const;
+		std::string receive(int maxBufferSize = MAX_PACKET_SIZE) const;
 	};
 }
 

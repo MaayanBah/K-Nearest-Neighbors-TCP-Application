@@ -15,6 +15,7 @@ void DownloadCommand::execute() {
 
     if (appData.classificationResult.empty()) {
         io.write("please classify the data\n");
+        return;
     }
 
     io.write("1");
@@ -28,4 +29,5 @@ void DownloadCommand::execute() {
 
     ClientThread::clientsAppdata[ClientThread::ClientData(client.getIP(), portReceived)] = &appData;
     io.write("1");
+    io.read();
 }

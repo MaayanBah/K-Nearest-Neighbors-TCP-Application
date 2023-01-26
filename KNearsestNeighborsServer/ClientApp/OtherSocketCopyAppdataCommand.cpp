@@ -24,6 +24,6 @@ void OtherSocketCopyAppdataCommand::execute() {
         return;
     }
 
-    io.write("1");
     appData = *ClientThread::clientsAppdata.at(parentClient);
+    io.write("1");
 }
