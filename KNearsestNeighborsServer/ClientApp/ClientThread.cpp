@@ -62,7 +62,7 @@ void ClientThread::operator()(network::ClientSocket client) {
                     break;
                 }
 
-                if (userChoice < 1 || userChoice > supportedCommands.size()) {
+                if (userChoice < 0 || userChoice >= supportedCommands.size()) {
                     break;
                 }
 

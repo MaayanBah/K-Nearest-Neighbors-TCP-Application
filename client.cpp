@@ -216,27 +216,21 @@ void classifyData(const int& sock) {
 void displayResults(const int& sock) {
 	do {
 		string buf = returnResponseFromServer(sock);
-		// if content is alright - then delete the initial "0" of chunk and print it
-		if (buf.length() > 0 && buf[0] == '0') {
+		if (!buf.empty() && buf[0] == '0') {
 			sendToServer(sock, "1");
-			buf.erase(buf.begin());
-			cout << buf;
+			cout << buf.substr(1);
 		} else {
 			if (!buf.empty() && buf[0] == '1') {
 				sendToServer(sock, "1");
+				cout << "Done.\n";
+			} else if (buf[0] == '2') {
+				cout << "There was a problem receiving the content" << endl;					
+				sendToServer(sock, "2");
 			} else {
-				if (buf[0] == '2') {
-					cout << "There was a problem receiving the content" << endl;					
-					sendToServer(sock, "2");
-				} else {
-					cout << buf;
-				}
-				
-				return;
+				cout << buf;
 			}
 			
-			cout << returnResponseFromServer(sock);
-			return;
+			break;
 		}
 	} while(true);
 }
@@ -246,19 +240,20 @@ void getTheContentToFile(const int& sock, const string& filePath) {
 	
 	do {
 		string buf = returnResponseFromServer(sock);
-		// if content is alright - then delete the initial "0" of chunk and print it
-		if (buf.length() > 0 && buf[0] == '0') {
+		if (!buf.empty() && buf[0] == '0') {
 			sendToServer(sock, "1");
-			buf.erase(buf.begin());
-			outfile << buf;
+			outfile << buf.substr(1);
 		} else {
 			if (!buf.empty() && buf[0] == '1') {
 				sendToServer(sock, "1");
-			} else {
+			} else if (buf[0] == '2') {
+				cout << "There was a problem receiving the content" << endl;					
 				sendToServer(sock, "2");
-				cout << "There was a problem receiving the content" << endl;
+			} else {
+				cout << buf;
 			}
-			return;
+			
+			break;
 		}
 	} while(true);
 }

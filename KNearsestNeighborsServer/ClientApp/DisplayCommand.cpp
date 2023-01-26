@@ -25,7 +25,7 @@ void DisplayCommand::execute() {
         io.write(string("0") + appData.classificationResult.substr(currentIndex, sizeToSend));
 
         if (io.read()[0] != '1') {
-            break;
+            return;
         }
     }
 
