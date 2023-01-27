@@ -419,10 +419,15 @@ int main(int argc, char* argv[]) {
 					break;
 			}
 		} while(!shouldExit);
+		
+		for (thread& t : vecOfThreads) {
+			t.join();
+		}
 	} catch (std::runtime_error e) {
 		cout << e.what() << endl;
 	}
 
     close(sock);
+	
     return 0;
 }
