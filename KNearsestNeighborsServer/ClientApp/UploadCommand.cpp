@@ -11,14 +11,14 @@ std::string UploadCommand::getFileFromIO() {
     string uploadedData;
     string currentPacketReceived = io.read();
 
-    while (currentPacketReceived[0] != FINISHED_MARK) {
-        if (currentPacketReceived[0] != DATA_MARK) {
-            io.write(string(1, ERROR_MARK));
+    while (currentPacketReceived[0] != '1') {
+        if (currentPacketReceived[0] != '0') {
+            uploadedData.clear();
             break;
         }
 
         uploadedData += currentPacketReceived.substr(1);
-        io.write(string(1, FINISHED_MARK));
+        io.write("1");
         currentPacketReceived = io.read();
     }
 
@@ -100,8 +100,8 @@ void UploadCommand::execute() {
     string classifiedFile = getFileFromIO();
 
     vector<data::LabeledDataSet::LabeledData> classifiedLabels;
-    if (!parseClassifiedFile(classifiedFile, classifiedLabels) || classifiedLabels.size() < appData.k) {
-        io.write(string(1, ERROR_MARK));
+    if (classifiedFile.empty() || !parseClassifiedFile(classifiedFile, classifiedLabels) || classifiedLabels.size() < appData.k) {
+        io.write("2");
         return;
     }
 
@@ -109,8 +109,8 @@ void UploadCommand::execute() {
     string unclassifiedFile = getFileFromIO();
 
     vector<vector<double>> unclassifiedVectors;
-    if (!parseUnclassifiedFile(unclassifiedFile, unclassifiedVectors, classifiedLabels[0].features.size()) || unclassifiedVectors.empty()) {
-        io.write(string(1, ERROR_MARK));
+    if (unclassifiedFile.empty() || !parseUnclassifiedFile(unclassifiedFile, unclassifiedVectors, classifiedLabels[0].features.size()) || unclassifiedVectors.empty()) {
+        io.write("2");
         return;
     }
 

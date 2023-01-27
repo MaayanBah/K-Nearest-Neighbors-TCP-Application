@@ -1,6 +1,8 @@
-#include <vector>
+#include <string>
 
 #include "ClientApp/DownloadCommand.h"
+#include "Utils/ParseMethods.h"
+#include "ClientThread.h"
 
 using namespace app;
 using namespace std;
@@ -16,19 +18,16 @@ void DownloadCommand::execute() {
         return;
     }
 
-    int sizeToSend;
+    io.write("1");
+    string response = io.read();
+    int portReceived;
 
-    for (int currentIndex = 0; 
-         currentIndex < appData.classificationResult.size();
-         currentIndex += sizeToSend) {
-        sizeToSend = min<int>(4096, appData.classificationResult.size() - currentIndex);
-        io.write(string(1, '0') + appData.classificationResult.substr(currentIndex, sizeToSend));
-
-        if (io.read()[0] != '1') {
-            break;
-        }
+    if (!ParseMethods::parse(response, portReceived)) {
+        io.write("2");
+        return;
     }
 
-    io.write(string(1, '1'));
+    ClientThread::clientsAppdata[ClientThread::ClientData(client.getIP(), portReceived)] = &appData;
+    io.write("1");
     io.read();
 }

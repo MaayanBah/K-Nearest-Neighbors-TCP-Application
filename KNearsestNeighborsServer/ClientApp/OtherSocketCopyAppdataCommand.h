@@ -1,12 +1,11 @@
-#ifndef __DOWNLOAD_COMMAND_H
-#define __DOWNLOAD_COMMAND_H
+#ifndef __OTHER_SOCKET_DOWNLOAD_COMMAND_H
+#define __OTHER_SOCKET_DOWNLOAD_COMMAND_H
 
 #include "ClientApp/Command.h"
 #include "ClientApp/AppData.h"
-#include "Network/ClientSocket.h"
 
 namespace app {
-    class DownloadCommand : public Command {
+    class OtherSocketCopyAppdataCommand : public Command {
     private:
         // Members
         AppData& appData;
@@ -15,12 +14,12 @@ namespace app {
 
     public:
         // C'tor
-        DownloadCommand(const network::ClientSocket& client, 
-                        AppData& appData) :
+        OtherSocketCopyAppdataCommand(const network::ClientSocket& client,
+                                   AppData& appData) :
             Command("download results", io),
-            appData(appData),
             client(client),
-            io(client) {
+            io(client),
+            appData(appData) {
         }
 
         // Implemented Abstract Methods

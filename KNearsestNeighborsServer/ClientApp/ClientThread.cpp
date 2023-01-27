@@ -8,7 +8,9 @@
 #include "ClientApp/UploadCommand.h"
 #include "ClientApp/AlgorithmSettingsCommand.h"
 #include "ClientApp/ClassifyDataCommand.h"
+#include "ClientApp/DisplayCommand.h"
 #include "ClientApp/DownloadCommand.h"
+#include "ClientApp/OtherSocketCopyAppdataCommand.h"
 #include "ClientApp/ClientThread.h"
 #include "ClientApp/AppData.h"
 #include "Utils/ParseMethods.h"
@@ -18,20 +20,18 @@
 using namespace std;
 using namespace app;
 
-ClientThread::ClientThread() {
-    // supportedCommands.push_back(...);
-}
+std::map<ClientThread::ClientData, AppData*> ClientThread::clientsAppdata;
 
-void ClientThread::sendMenu(const network::ClientSocket& client,
+void ClientThread::sendMenu(DefaultIO& io,
                             const std::vector<std::unique_ptr<Command>>& supportedCommands) {
     string menu;
-	for (int index = 0; index < supportedCommands.size(); index++) {
-        menu += to_string(index + 1) + ". " + supportedCommands[index]->description() + "\n";
+	for (int index = 1; index < supportedCommands.size(); index++) {
+        menu += to_string(index) + ". " + supportedCommands[index]->description() + "\n";
     }
 
     menu += to_string(EXIT_OPTION) + ". Exit\n";
 
-    client.send(menu);
+    io.write(menu);
 }
 
 void ClientThread::operator()(network::ClientSocket client) {
@@ -39,17 +39,21 @@ void ClientThread::operator()(network::ClientSocket client) {
     SocketIO socketIO(client);
 
     vector<unique_ptr<Command>> supportedCommands;
+
+    // Internal Command - not to be sent in the menu (hence the 'index = 1' in the sendMenu method)
+    supportedCommands.push_back(unique_ptr<OtherSocketCopyAppdataCommand>(new OtherSocketCopyAppdataCommand(client, appData)));
+
     supportedCommands.push_back(unique_ptr<UploadCommand>(new UploadCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<AlgorithmSettingsCommand>(new AlgorithmSettingsCommand(socketIO, appData)));
     supportedCommands.push_back(unique_ptr<ClassifyDataCommand>(new ClassifyDataCommand(socketIO, appData)));
-    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("display results", socketIO, appData)));
-    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand("download results", socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DisplayCommand>(new DisplayCommand(socketIO, appData)));
+    supportedCommands.push_back(unique_ptr<DownloadCommand>(new DownloadCommand(client, appData)));
 
     string response;
 
     try {
         do {
-            sendMenu(client, supportedCommands);
+            sendMenu(socketIO, supportedCommands);
             response = client.receive();
 
             int userChoice;
@@ -58,12 +62,13 @@ void ClientThread::operator()(network::ClientSocket client) {
                     break;
                 }
 
-                if (userChoice < 1 || userChoice > supportedCommands.size()) {
+                if (userChoice < 0 || userChoice >= supportedCommands.size()) {
                     break;
                 }
 
-                supportedCommands[userChoice - 1]->execute();
+                supportedCommands[userChoice]->execute();
             }
         } while (true);
     } catch (runtime_error exception) { }
+    clientsAppdata.erase(ClientData(client));
 }

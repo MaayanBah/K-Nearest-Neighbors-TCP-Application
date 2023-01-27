@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstring>
 #include <string>
-#include <vector>
 #include <sstream>
 #include <netdb.h>
 #include <unistd.h>
@@ -14,6 +13,8 @@
 #include <fstream>
 #include <thread>
 #include <vector>
+#include <list>
+#include <stdexcept>
 
 using namespace std;
 
@@ -21,8 +22,7 @@ int createSocket(const string& ipAddress, const int& port) {
  	// Create a socket
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
-		cout << "Failed to create socket" << endl;
-        exit;
+		throw std::runtime_error("Failed to create socket");
     }
 	
     // Create a hint structure for the server we are connecting with
@@ -32,15 +32,13 @@ int createSocket(const string& ipAddress, const int& port) {
 	
     if (inet_pton(AF_INET, ipAddress.c_str(), &hint.sin_addr) == 0)
 	{
-		cout << ipAddress << " is not a valid ip address" << endl;
-		exit;
+		throw std::runtime_error(ipAddress + " is not a valid ip address");
 	}
 
     // Connect to the server on the socket
     int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
     if (connectRes == -1) {
-		cout << "Failed to connect to socket with ip " << ipAddress << " and port " << port << endl;
-        exit;
+		throw std::runtime_error("Failed to connect to socket with ip " + ipAddress + " and port " + to_string(port));
     }
 
 	return sock;
@@ -82,14 +80,10 @@ bool validateClientInput(const string& clientData)
 	return !stream.fail();
 }
 
-//check if number or string
-bool checkNumber(const string& str) {
-   for (int i = 0; i < str.length(); i++) {
-		if (isdigit(str[i]) == false) {
-			return false;
-		}
-   }
-   return true;
+void sendToServer(const int& sock, const string& inputFromUserToSend) {
+	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size(), 0) == -1) {
+		throw std::runtime_error("Couldn't send to server!");
+	}
 }
 
 string returnResponseFromServer(const int& sock) {
@@ -98,38 +92,29 @@ string returnResponseFromServer(const int& sock) {
 	memset(buf, 0, sizeof(buf));
 	int bytesReceived = recv(sock, buf, sizeof(buf), 0);
 	if (bytesReceived == -1) {
-		cout << "There was an error getting response from server" << endl;
-		exit;
+		throw std::runtime_error("There was an error getting response from server");
 	}
 	
 	if (bytesReceived == 0) {
-		cout << "Server unavailable, the socket disconnected.\n";
-		exit;
+		throw std::runtime_error("Server unavailable, the socket disconnected");
 	}
+	
+	// The server expects a response for every time it sends data.
+	// The server behaves this way so that two seperate sends 
+	// from the server's side wouldn't accidentally get chained together
+	sendToServer(sock, "1");
 	return string(buf, bytesReceived);
 }
 
-void sendToServer(const int& sock, const string& inputFromUserToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), inputFromUserToSend.size() + 1, 0) == -1) {
-		cout << "Couldn't send to server! Whoops!" << endl;
-		exit;
-	}
-}
-
-void sendToServer(const int& sock, const string& inputFromUserToSend, const int& bytesToSend) {
-	if (send(sock, inputFromUserToSend.c_str(), bytesToSend + 1, 0) == -1) {
-		cout << "Couldn't send to server! Whoops!" << endl;
-		exit;
-	}
-}
-
 bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
-	const int FILE_CHUNK_SIZE = 4095; 
+	const int FILE_CHUNK_SIZE = 16383; 
 
 	// Check if file exists
 	ifstream file(localTrainFile, ios::binary);
 	if(!file) {
-		cout<<"invalid input" << endl;
+		cout << "invalid input" << endl;
+		sendToServer(sock, "2");
+		returnResponseFromServer(sock);
 		return false;
 	}
 
@@ -160,15 +145,14 @@ bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
 		string buf = initial.append(string(fileBuffer.data() + bytesSent, fileBuffer.data() + bytesSent + bytesToSend));
 		// Send the file in chunks (with initial "0") to server and wait for a response of the server
 		sendToServer(sock, buf);
-		bytesSent += bytesToSend;
-
+		
 		response = returnResponseFromServer(sock);
 		
 		// if the server confirm to get the chunk
 		if (response[0] == '1') {
 			bytesSent += bytesToSend;
 		} else if (response[0] == '2') {
-			cout << "There was an error with the content of the file" << endl;
+			cout << "invalid input" << endl;
 			return false;
 		}
 		else
@@ -183,7 +167,7 @@ bool sendFileToServerByChunks(const int& sock, string localTrainFile) {
 	
 	response = returnResponseFromServer(sock);
 	if (response[0] == '2') {
-		cout << "There was an error with the content of the file" << endl;
+		cout << "invalid input" << endl;
 		return false;
 	}
 	
@@ -198,15 +182,14 @@ void uploadUnclassifiedCSV(const int& sock) {
 	cout << "Please upload your local train CSV file." << endl;
 	getline(cin, localTrainFile); 
 	if (!sendFileToServerByChunks(sock, localTrainFile)) {
-		cout << returnResponseFromServer(sock);
 		return;
 	}
 
 	string localTestFile;
 	cout << "Please upload your local test CSV file." << endl;
 	getline(cin, localTestFile);
+	
 	sendFileToServerByChunks(sock, localTestFile);
-	cout << returnResponseFromServer(sock);
 }
 
 
@@ -214,73 +197,58 @@ void algorithemSettings(const int& sock) {
 	cout << returnResponseFromServer(sock);
 	string userInput;
 	getline(cin, userInput);
+	
+	if (userInput.empty()) {
+		userInput = string(1, '\0');
+	}
+	
 	sendToServer(sock, userInput);
 	string response = returnResponseFromServer(sock);
-	
-	cout << response;
-	if (response.find("Exit") == string::npos) {
-		cout << returnResponseFromServer(sock);
+	if (response[0] != '1') {
+		cout << response;
 	}
 }
 
 void classifyData(const int& sock) {
-	// waiting for a response from server
-	// Maayan implement : the server runs the CSV files from option 1
-	// and server response back 'classifying data complete' or 'please upload data'
-	// then get back to the menu
-	string response = returnResponseFromServer(sock);
+	cout << returnResponseFromServer(sock);
+}
+
+string getResults(const int& sock) {
+	string results;
+	do {
+		string buf = returnResponseFromServer(sock);
+		if (!buf.empty() && buf[0] == '0') {
+			results += buf.substr(1);
+			sendToServer(sock, "1");
+		} else {
+			if (!buf.empty() && buf[0] == '1') {
+				sendToServer(sock, "1");
+				return results;
+			} else if (buf[0] == '2') {
+				cout << "There was a problem receiving the content" << endl;					
+				sendToServer(sock, "2");
+			} else {
+				cout << buf;
+			}
+			
+			break;
+		}
+	} while(true);
 	
-	cout << response;
-	if (response.find("Exit") == string::npos) {
-		cout << returnResponseFromServer(sock);
-	}
+	return "";
 }
 
 void displayResults(const int& sock) {
-	// get the contect from the server (till 4096 bytes and including initial "0" for each chunk)
-	do {
-		string buf = returnResponseFromServer(sock);
-		// if content is alright - then delete the initial "0" of chunk and print it
-		if (buf.length() > 0 && buf[0] == '0') {
-			sendToServer(sock, "1");
-			buf.erase(buf.begin());
-			cout << buf;
-		}
-		// if content is invalid - then send an error and print a message
-		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
-			sendToServer(sock, "2");
-			cout << "There was a problem receiving the contect" << endl;
-			exit;
-		}
-		// if there is no more content to read, server send 1, and client exits
-		if (buf == "1") {
-			break;
-		}
-	} while(true);
+	string results = getResults(sock);
+	
+	if (!results.empty()) {
+		cout << results << "Done.\n";
+	}
 }
 
-void getTheContectToFile(const int& sock, const string& filePath) {
-	// get the contect from the server (till 4096 bytes and including initial "0" for each chunk)
-	do {
-		string buf = returnResponseFromServer(sock);
-		// if content is alright - then delete the initial "0" of chunk and print it
-		if (buf.length() > 0 && buf[0] == '0') {
-			sendToServer(sock, "1");
-			buf.erase(buf.begin());
-			std::ofstream outfile (filePath);
-			outfile << buf << std::endl;
-		}
-		// if content is invalid - then send an error and print a message
-		if (buf.length() <= 0 || (buf[0] != '0' && buf != "1")) {
-			sendToServer(sock, "2");
-			cout << "There was a problem receiving the contect" << endl;
-			exit;
-		}
-		// if there is no more content to read, server send 1, and client exits
-		if (buf == "1") {
-			break;
-		}
-	} while(true);
+void getTheContentToFile(const int& sock, const string& filePath) {
+	std::ofstream outfile (filePath);
+	outfile << getResults(sock);
 }
 
 void downloadResults(const string& filePath, const string& ipAddress, int port, unsigned int sockFatherPort) {
@@ -292,38 +260,87 @@ void downloadResults(const string& filePath, const string& ipAddress, int port, 
 	// if the user enters 5 again, and a path to a file, we open one more thread
 	// so we have parallel threads, working both together
 	
-	//Print Thread ID and path to file
-	std::cout << "From Thread ID : "<<std::this_thread::get_id() << "\n"; // to commit it 
-	cout << "the path is: " << filePath << endl; // to commit it
-
 	// create a new socket with the server
 	// and dont print its menu default response
-	int sock = createSocket(ipAddress, port);
-	cout << "sock number inside function: " << sock << endl; // to commit
-	// getting menu from the server, and doesn't print it
-	string menu = returnResponseFromServer(sock);
-	// send a special command to server to open a communication
-	sendToServer(sock, "6");
-	if (returnResponseFromServer(sock) == "1") {
-		sendToServer(sock, to_string(sockFatherPort));
-		getTheContectToFile(sock, filePath);
-
+	int sock;
+	try {
+		sock = createSocket(ipAddress, port);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+		return;
 	}
-
 	
-
-
+	try {
+		// getting menu from the server, and doesn't print it
+		returnResponseFromServer(sock);
+		
+		// send a special command to server to open a communication
+		sendToServer(sock, "0");
+		
+		if (returnResponseFromServer(sock)[0] != '1') {
+			cout << "There was a problem receiving the content" << endl;
+		} else {
+			sendToServer(sock, to_string(sockFatherPort));
+			string response = returnResponseFromServer(sock);
+			
+			if (response[0] != '1') {
+				cout << "There was a problem receiving the content" << endl;
+			} else {
+				returnResponseFromServer(sock);
+				
+				sendToServer(sock, "4");
+				
+				getTheContentToFile(sock, filePath);	
+			}
+		}
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+	}
+	
+    close(sock);
 }
 
-
-bool checkIfFileExists(const string& pathToFile) {
-	ifstream file(pathToFile, ios::binary);
-	if(!file) {
-		return false;
-	} 
-	return true;
+void sendSockPortAndDownload(const int& sock, 
+							 const string& serverIP,
+							 int serverPort,
+							 std::list<std::thread>& vecOfThreads) {	
+    sockaddr_in hint;
+	socklen_t hint_length = sizeof(hint);
+	
+	getsockname(sock, (struct sockaddr *) &hint, &hint_length);
+	string response = returnResponseFromServer(sock);
+	
+	if (response[0] != '1') {
+		cout << response;
+		return;
+	}
+	
+	sendToServer(sock, to_string(hint.sin_port));
+	
+	response = returnResponseFromServer(sock);
+	if (response[0] != '1') {
+		cout << "Failed to download file from server" << endl;
+		return;
+	}
+	
+	string pathToFile;
+	getline(cin, pathToFile);
+	
+	sendToServer(sock, "1");
+	
+	vecOfThreads.push_back(thread(downloadResults, 
+								  pathToFile, 
+								  serverIP, 
+								  serverPort, 
+								  hint.sin_port));
 }
 
+bool parseInteger(const string& integerString, int& parsedInteger) {
+    stringstream stream(integerString);
+    stream >> parsedInteger;
+
+    return !stream.fail();
+}
 
 int main(int argc, char* argv[]) {
 	argc--;
@@ -351,100 +368,60 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	
-	// create a socket and connection to server
-	//int sock = createSocket(ipAddress, port);
-
  	// Create a socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
-		cout << "Failed to create socket" << endl;
-        exit;
-    }
-	
-    // Create a hint structure for the server we are connecting with
-    sockaddr_in hint;
-    hint.sin_family = AF_INET;
-    hint.sin_port = htons(port);
-	socklen_t hint_length = sizeof(hint);
-
-	
-    if (inet_pton(AF_INET, ipAddress.c_str(), &hint.sin_addr) == 0)
-	{
-		cout << ipAddress << " is not a valid ip address" << endl;
-		exit;
+	int sock;
+	try {
+		sock = createSocket(ipAddress, port);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
 	}
-
-    // Connect to the server on the socket
-    int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
-    if (connectRes == -1) {
-		cout << "Failed to connect to socket with ip " << ipAddress << " and port " << port << endl;
-        exit;
-    }
-
-	getsockname(sock, (struct sockaddr *) &hint, &hint_length);
-    std::cout << "Port number of main socket: " << ntohs(hint.sin_port) << std::endl;
-
-    string userInput;
-	std::vector<std::thread> vecOfThreads;
-	bool shouldExit = false;
 	
-	cout << returnResponseFromServer(sock);
-	
-    do {
-		// uncomment it when Maayan implement the menu
-		//responseFromServer(sock);
-		cout << "a manu" << endl; // commit it
-		
+	try {		
+		string userInput;
+		std::list<std::thread> vecOfThreads;
+		bool shouldExit = false;
 
-		// after the menu, the user enters a number according to the menu options
-        getline(cin, userInput);
+		do {
+			cout << returnResponseFromServer(sock);
+			
+			// after the menu, the user enters a number according to the menu options
+			getline(cin, userInput);
+			
+			int choice;
 
-		// If the client didn't enter a number
-		if (!checkNumber(userInput)) {
-			cout << "An invalid option" << endl;
-			continue;
-		}
-		
-		// send the server the user choice
-		sendToServer(sock, userInput);
-		string pathToFile;
-
-		switch (stoi(userInput)) {
-			case 1:
-				uploadUnclassifiedCSV(sock);
-				break;
-			case 2:
-				algorithemSettings(sock);
-				break;
-			case 3:
-				classifyData(sock);
-				break;
-			case 4:
-				displayResults(sock);
-				break;	
-			case 5:
-				cout << "sock number in switch case: " << sock << endl; // to commit
-				cout << "Please upload a path to file" << endl; //to commit it
-				getline(cin, pathToFile);
-				// Check if file exists
-				if (checkIfFileExists(pathToFile)) {
-					// file exists
-					cout << "file exists!" << endl; // commit it
-					vecOfThreads.push_back(thread(downloadResults, pathToFile, ipAddress, port, ntohs(hint.sin_port)));
-				} else {
-					// file doesn't exists - then create it
-					std::ofstream outfile (pathToFile);
-					//outfile << "my text here!" << std::endl; // to commit it
-					vecOfThreads.push_back(thread(downloadResults, pathToFile, ipAddress, port, ntohs(hint.sin_port)));
-				}
-				break;
-			case 8:
-				shouldExit = true;
-				break;
-			default:
+			// If the client didn't enter a number
+			while (!parseInteger(userInput, choice) || (choice > 5 && choice != 8) || choice < 1) {
 				cout << "invalid input" << endl;
+				getline(cin, userInput);
 			}
-    } while(!shouldExit);
+			
+			// send the server the user choice
+			sendToServer(sock, userInput);
+
+			switch (choice) {
+				case 1:
+					uploadUnclassifiedCSV(sock);
+					break;
+				case 2:
+					algorithemSettings(sock);
+					break;
+				case 3:
+					classifyData(sock);
+					break;
+				case 4:
+					displayResults(sock);
+					break;	
+				case 5:
+					sendSockPortAndDownload(sock, ipAddress, port, vecOfThreads);
+					break;
+				case 8:
+					shouldExit = true;
+					break;
+			}
+		} while(!shouldExit);
+	} catch (std::runtime_error e) {
+		cout << e.what() << endl;
+	}
 
     close(sock);
     return 0;
