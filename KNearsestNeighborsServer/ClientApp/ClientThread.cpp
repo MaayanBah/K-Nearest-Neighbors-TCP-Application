@@ -29,7 +29,7 @@ void ClientThread::sendMenu(DefaultIO& io,
         menu += to_string(index) + ". " + supportedCommands[index]->description() + "\n";
     }
 
-    menu += to_string(EXIT_OPTION) + ". Exit\n";
+    menu += to_string(EXIT_OPTION) + ". exit\n";
 
     io.write(menu);
 }
