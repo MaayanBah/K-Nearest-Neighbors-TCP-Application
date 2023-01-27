@@ -396,7 +396,7 @@ int main(int argc, char* argv[]) {
 			}
 			
 			// send the server the user choice
-			sendToServer(sock, userInput);
+			sendToServer(sock, to_string(choice));
 
 			switch (choice) {
 				case 1:

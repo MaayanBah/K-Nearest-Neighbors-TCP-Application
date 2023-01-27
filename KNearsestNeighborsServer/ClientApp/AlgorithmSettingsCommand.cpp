@@ -65,7 +65,9 @@ void AlgorithmSettingsCommand::execute() {
         return;
     }
 
-    if (wasKParsed) {
+    if (!wasKParsed) {
+        io.write(badIntegerMessage);
+    } else {
         appData.k = newK;
         appData.distanceMethod = conversionMap.at(distanceString);
         io.write("1");
