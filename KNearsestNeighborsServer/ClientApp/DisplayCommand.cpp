@@ -21,7 +21,7 @@ void DisplayCommand::execute() {
     for (int currentIndex = 0; 
          currentIndex < appData.classificationResult.size();
          currentIndex += sizeToSend) {
-        sizeToSend = min<int>(4096, appData.classificationResult.size() - currentIndex);
+        sizeToSend = min<int>(4095, appData.classificationResult.size() - currentIndex);
         io.write(string("0") + appData.classificationResult.substr(currentIndex, sizeToSend));
 
         if (io.read()[0] != '1') {

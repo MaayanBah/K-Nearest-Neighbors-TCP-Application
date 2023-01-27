@@ -213,16 +213,17 @@ void classifyData(const int& sock) {
 	cout << returnResponseFromServer(sock);
 }
 
-void displayResults(const int& sock) {
+string getResults(const int& sock) {
+	string results;
 	do {
 		string buf = returnResponseFromServer(sock);
 		if (!buf.empty() && buf[0] == '0') {
+			results += buf.substr(1);
 			sendToServer(sock, "1");
-			cout << buf.substr(1);
 		} else {
 			if (!buf.empty() && buf[0] == '1') {
 				sendToServer(sock, "1");
-				cout << "Done.\n";
+				return results;
 			} else if (buf[0] == '2') {
 				cout << "There was a problem receiving the content" << endl;					
 				sendToServer(sock, "2");
@@ -233,29 +234,21 @@ void displayResults(const int& sock) {
 			break;
 		}
 	} while(true);
+	
+	return "";
+}
+
+void displayResults(const int& sock) {
+	string results = getResults(sock);
+	
+	if (!results.empty()) {
+		cout << results << "Done.\n";
+	}
 }
 
 void getTheContentToFile(const int& sock, const string& filePath) {
 	std::ofstream outfile (filePath);
-	
-	do {
-		string buf = returnResponseFromServer(sock);
-		if (!buf.empty() && buf[0] == '0') {
-			sendToServer(sock, "1");
-			outfile << buf.substr(1);
-		} else {
-			if (!buf.empty() && buf[0] == '1') {
-				sendToServer(sock, "1");
-			} else if (buf[0] == '2') {
-				cout << "There was a problem receiving the content" << endl;					
-				sendToServer(sock, "2");
-			} else {
-				cout << buf;
-			}
-			
-			break;
-		}
-	} while(true);
+	outfile << getResults(sock);
 }
 
 void downloadResults(const string& filePath, const string& ipAddress, int port, unsigned int sockFatherPort) {
